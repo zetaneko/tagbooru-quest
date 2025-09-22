@@ -222,3 +222,128 @@
     .suggest-item:hover {
         background: #f6f8fa;
     }
+
+/* Mobile-specific styles */
+@media (max-width: 768px) {
+    /* Hide stats on mobile */
+    .forest-stats,
+    .search-stats {
+        display: none !important;
+    }
+
+    /* Reduce tree indentation for mobile */
+    .tree-node {
+        margin-left: 0 !important;
+    }
+
+    /* Use minimal indentation based on level */
+    .tree-node[style*="margin-left: 24px"] {
+        margin-left: 4px !important;
+    }
+
+    .tree-node[style*="margin-left: 48px"] {
+        margin-left: 8px !important;
+    }
+
+    .tree-node[style*="margin-left: 72px"] {
+        margin-left: 12px !important;
+    }
+
+    .tree-node[style*="margin-left: 96px"] {
+        margin-left: 16px !important;
+    }
+
+    .tree-node[style*="margin-left: 120px"] {
+        margin-left: 20px !important;
+    }
+
+    /* Adjust TagNodeComponent indentation too */
+    .tag-node[style*="margin-left: 20px"] {
+        margin-left: 4px !important;
+    }
+
+    .tag-node[style*="margin-left: 40px"] {
+        margin-left: 8px !important;
+    }
+
+    .tag-node[style*="margin-left: 60px"] {
+        margin-left: 12px !important;
+    }
+
+    .tag-node[style*="margin-left: 80px"] {
+        margin-left: 16px !important;
+    }
+
+    .tag-node[style*="margin-left: 100px"] {
+        margin-left: 20px !important;
+    }
+
+    /* Fix tag overflow on search results */
+    .results-grid {
+        grid-template-columns: 1fr !important;
+        gap: 8px;
+    }
+
+    .result-card {
+        margin: 0;
+        padding: 12px;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+
+    .tag-node-name {
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        hyphens: auto;
+        max-width: 100%;
+    }
+
+    .result-path {
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        font-size: 12px;
+    }
+
+    /* Make search input container more mobile friendly */
+    .search-input-wrapper,
+    .forest-search-input {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    /* Adjust node content padding for smaller screens */
+    .node-content,
+    .tag-node-content {
+        padding: 6px 8px;
+        font-size: 14px;
+    }
+
+    /* Make action buttons more touch-friendly */
+    .tag-actions,
+    .tag-node-actions {
+        gap: 8px;
+    }
+
+    .tree-copy-btn,
+    .tree-danbooru-btn,
+    .tag-copy-btn,
+    .tag-tree-btn,
+    .tag-danbooru-btn {
+        padding: 4px 6px;
+        font-size: 14px;
+        min-width: 24px;
+        min-height: 24px;
+    }
+
+    /* Ensure example tags wrap properly */
+    .example-tags {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .example-tag {
+        flex: none;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+}

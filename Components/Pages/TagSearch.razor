@@ -426,8 +426,9 @@
     {
         try
         {
-            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", node.Slug);
-            ShowToast($"Copied: {node.Slug}", "success");
+            var tagForClipboard = node.Slug.Replace('_', ' ');
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", tagForClipboard);
+            ShowToast($"Copied: {tagForClipboard}", "success");
         }
         catch
         {

@@ -1,4 +1,5 @@
 @using TagbooruQuest.Data
+@using TagbooruQuest.Services
 @inject IJSRuntime JSRuntime
 
 <div class="tree-node" style="margin-left: @(Level * 24)px">
@@ -119,8 +120,9 @@
         {
             try
             {
-                await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", Node.Slug);
-                await OnTagCopiedWithMessage.InvokeAsync((Node, $"Copied: {Node.Slug}"));
+                var tagForClipboard = Node.Slug.Replace('_', ' ');
+                await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", tagForClipboard);
+                await OnTagCopiedWithMessage.InvokeAsync((Node, $"Copied: {tagForClipboard}"));
             }
             catch (Exception ex)
             {
@@ -134,10 +136,10 @@
     {
         if (Node.IsTag)
         {
-            var url = $"https://danbooru.donmai.us/posts?tags={Uri.EscapeDataString(Node.Slug)}";
+                var url = $"https://danbooru.donmai.us/posts?tags={Uri.EscapeDataString(Node.Slug)}";
             await JSRuntime.InvokeVoidAsync("window.open", url, "_blank");
-            await OnDanbooruRequested.InvokeAsync(Node);
-        }
+                await OnDanbooruRequested.InvokeAsync(Node);
+            }
     }
 }
 

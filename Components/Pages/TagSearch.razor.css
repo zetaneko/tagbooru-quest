@@ -423,6 +423,17 @@
 @media (max-width: 768px) {
     .tag-search-container {
         padding: 0.75rem;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        overflow-x: hidden;
+    }
+
+    .search-content {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        overflow-x: hidden;
     }
 
     .search-title {
@@ -466,6 +477,40 @@
     .results-grid {
         grid-template-columns: 1fr;
         gap: 0.75rem;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .result-card {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        overflow: hidden;
+        margin: 0;
+    }
+
+    /* Ensure tag node component doesn't overflow */
+    .search-result-node {
+        width: 100%;
+        overflow: hidden;
+    }
+
+    .tag-node-content {
+        max-width: 100%;
+        overflow: hidden;
+    }
+
+    .tag-node-name {
+        word-break: break-word;
+        overflow-wrap: break-word;
+        hyphens: auto;
+        white-space: normal;
+        max-width: 100%;
+    }
+
+    /* Make sure action buttons don't cause overflow */
+    .tag-node-actions {
+        flex-shrink: 0;
     }
 
     .results-header {
@@ -517,6 +562,37 @@
 
     .result-card {
         padding: 0.75rem;
+        width: 100%;
+        box-sizing: border-box;
+        overflow: hidden;
+    }
+
+    /* Ensure all content within result cards doesn't overflow */
+    .result-card * {
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    /* Fix tag node names specifically */
+    .tag-node-name {
+        word-break: break-word;
+        hyphens: auto;
+        white-space: normal;
+    }
+
+    /* Fix result paths to wrap properly */
+    .result-path {
+        word-break: break-word;
+        white-space: normal;
+    }
+
+    /* Fix parent info overflow */
+    .result-parent {
+        white-space: normal;
+        max-width: 100%;
+        overflow: hidden;
     }
 
     .example-tag {
