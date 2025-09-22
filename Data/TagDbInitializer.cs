@@ -1,6 +1,6 @@
 ﻿using Microsoft.Data.Sqlite;
 
-namespace DanbooruTaggingUI.Data
+namespace TagbooruQuest.Data
 {
     public static class TagDbInitializer
     {

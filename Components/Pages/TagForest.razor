@@ -1,5 +1,5 @@
 @page "/tag-forest"
-@using DanbooruTaggingUI.Data
+@using TagbooruQuest.Data
 @inject TagGraphService TagService
 @inject IJSRuntime JSRuntime
 @implements IDisposable
@@ -190,7 +190,7 @@
             {
                 var dbPath = Path.Combine(FileSystem.AppDataDirectory, "tags.db");
                 var csvPath = Path.Combine(FileSystem.AppDataDirectory, "tags.csv");
-                var importer = new DanbooruTaggingUI.Data.TagImportService(dbPath, csvPath);
+                var importer = new TagbooruQuest.Data.TagImportService(dbPath, csvPath);
                 importer.ForceReimport();
             });
 

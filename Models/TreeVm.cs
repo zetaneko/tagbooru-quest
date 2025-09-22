@@ -1,4 +1,4 @@
-﻿namespace DanbooruTaggingUI.Models
+﻿namespace TagbooruQuest.Models
 {
     public class TreeVm
     {

@@ -1,6 +1,6 @@
 ﻿using Foundation;
 
-namespace DanbooruTaggingUI
+namespace TagbooruQuest
 {
     [Register("AppDelegate")]
     public class AppDelegate : MauiUIApplicationDelegate

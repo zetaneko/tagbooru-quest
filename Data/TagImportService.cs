@@ -3,7 +3,7 @@ using Microsoft.Data.Sqlite;
 using System.Globalization;
 using System.Text;
 
-namespace DanbooruTaggingUI.Data;
+namespace TagbooruQuest.Data;
 
 public class TagImportService
 {

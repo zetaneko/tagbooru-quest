@@ -1,7 +1,7 @@
 ﻿using ObjCRuntime;
 using UIKit;
 
-namespace DanbooruTaggingUI
+namespace TagbooruQuest
 {
     public class Program
     {

@@ -1,7 +1,7 @@
 ﻿using Microsoft.Data.Sqlite;
 using System.Data;
 
-namespace DanbooruTaggingUI.Data
+namespace TagbooruQuest.Data
 {
     /// <summary>
     /// Thin models for returning data to UI / callers

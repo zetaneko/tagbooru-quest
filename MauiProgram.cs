@@ -1,7 +1,7 @@
-﻿using DanbooruTaggingUI.Data;
+﻿using TagbooruQuest.Data;
 using Microsoft.Extensions.Logging;
 
-namespace DanbooruTaggingUI
+namespace TagbooruQuest
 {
     public static class MauiProgram
     {

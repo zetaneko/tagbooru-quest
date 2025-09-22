@@ -1,4 +1,4 @@
-﻿namespace DanbooruTaggingUI
+﻿namespace TagbooruQuest
 {
     public partial class App : Application
     {
