@@ -1,0 +1,188 @@
+@using DanbooruTaggingUI.Data
+@inject TagGraphService TagService
+
+<div class="tree-popup-overlay @(IsVisible ? "visible" : "")" @onclick="CloseIfOverlay">
+    <div class="tree-popup-modal" @onclick:stopPropagation="true">
+        <div class="tree-popup-header">
+            <h2>🌳 @(RootNode?.Text ?? "Tree View")</h2>
+            <button class="close-btn" @onclick="Close">×</button>
+        </div>
+
+        <div class="tree-popup-content">
+            @if (RootNode != null)
+            {
+                <div class="breadcrumb-path">
+                    @if (BreadcrumbPath.Any())
+                    {
+                        @foreach (var crumb in BreadcrumbPath)
+                        {
+                            <span class="breadcrumb-item">@crumb.Text</span>
+                            @if (crumb != BreadcrumbPath.Last())
+                            {
+                                <span class="breadcrumb-separator">›</span>
+                            }
+                        }
+                    }
+                </div>
+
+                <div class="tree-container">
+                    @RenderNode(RootNode, 0)
+                </div>
+            }
+            else if (IsLoading)
+            {
+                <div class="loading-container">
+                    <div class="loading-spinner"></div>
+                    <p>Loading tree...</p>
+                </div>
+            }
+            else if (!string.IsNullOrEmpty(ErrorMessage))
+            {
+                <div class="error-container">
+                    <p>❌ @ErrorMessage</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<Node> OnTagCopied { get; set; }
+    [Parameter] public EventCallback<(Node, string)> OnTagCopiedWithMessage { get; set; }
+    [Parameter] public EventCallback<Node> OnDanbooruRequested { get; set; }
+
+    private Node? RootNode;
+    private List<Node> BreadcrumbPath = new();
+    private Dictionary<int, List<Node>> ChildrenCache = new();
+    private HashSet<int> ExpandedNodes = new();
+    private Node? SelectedNode;
+    private bool IsLoading = false;
+    private string? ErrorMessage;
+
+    public Task ShowTreeAsync(Node rootNode)
+    {
+        IsLoading = true;
+        ErrorMessage = null;
+        RootNode = rootNode;
+        SelectedNode = rootNode;
+        ExpandedNodes.Clear();
+        ChildrenCache.Clear();
+
+        // Load breadcrumb path
+        BreadcrumbPath = TagService.GetBreadcrumb(rootNode.Id).ToList();
+
+        // Load initial children
+        LoadChildren(rootNode.Id);
+
+        IsLoading = false;
+        StateHasChanged();
+
+        return Task.CompletedTask;
+    }
+
+    private void LoadChildren(int nodeId)
+    {
+        if (!ChildrenCache.ContainsKey(nodeId))
+        {
+            var children = TagService.GetChildren(nodeId).ToList();
+            ChildrenCache[nodeId] = children;
+        }
+    }
+
+    private RenderFragment RenderNode(Node node, int depth) => __builder =>
+    {
+        var hasChildren = GetChildren(node.Id).Any();
+        var isExpanded = ExpandedNodes.Contains(node.Id);
+        var isSelected = SelectedNode?.Id == node.Id;
+        var childCount = GetChildren(node.Id).Count();
+
+        <TagNodeComponent Node="node"
+                         IsSelected="isSelected"
+                         IsExpanded="isExpanded"
+                         HasChildren="hasChildren"
+                         ChildCount="childCount"
+                         Depth="depth"
+                         OnNodeClick="OnNodeSelected"
+                         OnNodeDoubleClick="OnNodeDoubleClicked"
+                         OnToggleExpanded="OnToggleExpanded"
+                         OnCopyTagRequested="OnTagCopied"
+                         OnTagCopiedWithMessage="OnTagCopiedWithMessage"
+                         OnDanbooruRequested="OnDanbooruRequested" />
+
+        @if (hasChildren && isExpanded && depth < 5)
+        {
+            <div class="tree-children">
+                @foreach (var child in GetChildren(node.Id).Take(50))
+                {
+                    @RenderNode(child, depth + 1)
+                }
+            </div>
+        }
+    };
+
+    private List<Node> GetChildren(int nodeId)
+    {
+        if (ChildrenCache.TryGetValue(nodeId, out var children))
+            return children;
+        return new List<Node>();
+    }
+
+    private async Task OnNodeSelected(Node node)
+    {
+        SelectedNode = node;
+        LoadChildren(node.Id);
+
+        // Single-click: expand/collapse groups, copy tags
+        if (node.IsTag)
+        {
+            await OnTagCopied.InvokeAsync(node);
+        }
+        else
+        {
+            await OnToggleExpanded(node);
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task OnNodeDoubleClicked(Node node)
+    {
+        // Double-click: same as single-click for consistent behavior
+        if (node.IsTag)
+        {
+            await OnTagCopied.InvokeAsync(node);
+        }
+        else
+        {
+            await OnToggleExpanded(node);
+        }
+    }
+
+    private Task OnToggleExpanded(Node node)
+    {
+        if (ExpandedNodes.Contains(node.Id))
+        {
+            ExpandedNodes.Remove(node.Id);
+        }
+        else
+        {
+            ExpandedNodes.Add(node.Id);
+            LoadChildren(node.Id);
+        }
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private async Task Close()
+    {
+        IsVisible = false;
+        await OnClose.InvokeAsync();
+    }
+
+    private async Task CloseIfOverlay(MouseEventArgs e)
+    {
+        await Close();
+    }
+}

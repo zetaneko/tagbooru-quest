@@ -1,0 +1,479 @@
+@page "/search"
+@using DanbooruTaggingUI.Data
+@using DanbooruTaggingUI.Components.Shared
+@inject TagGraphService TagService
+@inject IJSRuntime JSRuntime
+@implements IDisposable
+
+<PageTitle>Tag Search</PageTitle>
+
+<div class="tag-search-container">
+    <div class="search-header">
+        <div class="nav-links">
+            <a href="/tag-forest" class="nav-link">🌲 Tree View</a>
+            <a href="/search" class="nav-link active">🔍 Search</a>
+        </div>
+        @*
+        <h1 class="search-title">
+            <span class="search-icon">🔍</span>
+            Tag Search
+            <span class="search-subtitle">Discover tags through intelligent search</span>
+        </h1>*@
+
+        <div class="search-stats">
+            @if (Stats != null)
+            {
+                <span class="stat-badge">🏷️ @Stats.Value.Tags tags</span>
+                <span class="stat-badge">📁 @(Stats.Value.Nodes - Stats.Value.Tags) categories</span>
+                <span class="stat-badge">🔗 @Stats.Value.Edges connections</span>
+            }
+        </div>
+    </div>
+
+    <div class="search-bar-container">
+        <div class="search-input-wrapper">
+            <input type="text"
+                   @bind="SearchQuery"
+                   @bind:event="oninput"
+                   @onkeydown="OnSearchKeyDown"
+                   placeholder="Search for tags and groups (e.g., 'shirt', 'weapon', 'hair')..."
+                   class="search-input"
+                   autofocus />
+
+            @if (!string.IsNullOrEmpty(SearchQuery))
+            {
+                <button class="clear-search-btn" @onclick="ClearSearch">
+                    ×
+                </button>
+            }
+        </div>
+    </div>
+
+    <div class="search-content">
+        @if (IsLoading)
+        {
+            <div class="loading-spinner">
+                <div class="spinner"></div>
+                <p>Searching...</p>
+            </div>
+        }
+        else if (!string.IsNullOrEmpty(SearchQuery))
+        {
+            <div class="search-results">
+                <div class="results-header">
+                    <h3>Search Results (@SearchResults.Count)</h3>
+                    @if (SearchResults.Any())
+                    {
+                        <span class="results-info">Groups listed first, then individual tags</span>
+                    }
+                </div>
+
+                @if (SearchResults.Any())
+                {
+                    <div class="results-grid">
+                        @foreach (var result in SearchResults)
+                        {
+                            var node = GetNodeFromResult(result);
+                            var isTag = IsResultTag(result);
+                            <div class="result-card @(isTag ? "tag-result" : "group-result")">
+                                @{
+                                    var parentInfo = GetParentInfo(result.Id);
+                                }
+                                @if (!string.IsNullOrEmpty(parentInfo))
+                                {
+                                    <div class="result-parent">
+                                        <span class="parent-label">in</span>
+                                        <span class="parent-name">@parentInfo</span>
+                                    </div>
+                                }
+
+                                <TagNodeComponent Node="node"
+                                                IsSelected="false"
+                                                IsExpanded="false"
+                                                HasChildren="!isTag"
+                                                ChildCount="GetChildCount(result.Id)"
+                                                Depth="0"
+                                                ShowTreeViewButton="!isTag"
+                                                CssClass="search-result-node"
+                                                OnNodeClick="OnResultSelected"
+                                                OnNodeDoubleClick="OnResultDoubleClicked"
+                                                OnCopyTagRequested="OnTagCopied"
+                                                OnShowTreeViewRequested="OnShowTreeView"
+                                                OnTagCopiedWithMessage="OnTagCopiedWithMessage"
+                                                OnDanbooruRequested="OnDanbooruRequested" />
+
+                                <div class="result-details">
+                                    @if (!string.IsNullOrEmpty(result.BestPath))
+                                    {
+                                        <div class="result-path">
+                                            <span class="path-label">Path:</span> @result.BestPath
+                                        </div>
+                                    }
+
+                                    <div class="result-meta">
+                                        <span class="result-type">@(isTag ? "Tag" : "Group")</span>
+                                        @if (result.Score > 0)
+                                        {
+                                            <span class="result-score">Score: @result.Score.ToString("F1")</span>
+                                        }
+                                        <span class="result-why">(@result.Why match)</span>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="no-results">
+                        <p>No results found for "@SearchQuery"</p>
+                        <p class="search-tips">
+                            Try:
+                            <br>• Different keywords
+                            <br>• Partial words (e.g., "hair" instead of "hairstyle")
+                            <br>• Category names (e.g., "clothing", "weapons")
+                        </p>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="search-welcome">
+                <div class="welcome-content">
+                    <h2>🎯 Discover Tags by Category</h2>
+                    <p>Use the search above to find tag groups and individual tags. Groups are shown first to help you explore tag hierarchies.</p>
+
+                    <div class="search-examples">
+                        <h4>Try searching for:</h4>
+                        <div class="example-tags">
+                            @foreach (var example in ExampleSearches)
+                            {
+                                <button class="example-tag" @onclick="() => SetSearchQuery(example)">
+                                    @example
+                                </button>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="quick-stats">
+                        @if (Stats != null)
+                        {
+                            <div class="stat-item">
+                                <span class="stat-number">@Stats.Value.Nodes</span>
+                                <span class="stat-label">Total Nodes</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-number">@Stats.Value.Tags</span>
+                                <span class="stat-label">Tags</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-number">@(Stats.Value.Nodes - Stats.Value.Tags)</span>
+                                <span class="stat-label">Groups</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Tree View Popup -->
+    <TreeViewPopup @ref="TreePopup"
+                   IsVisible="ShowTreePopup"
+                   OnClose="CloseTreePopup"
+                   OnTagCopied="OnTagCopied"
+                   OnTagCopiedWithMessage="OnTagCopiedWithMessage"
+                   OnDanbooruRequested="OnDanbooruRequested" />
+
+    <!-- Toast Notifications -->
+    @if (!string.IsNullOrEmpty(ToastMessage))
+    {
+        <div class="toast @ToastType">
+            @ToastMessage
+        </div>
+    }
+</div>
+
+@code {
+    private string _searchQuery = "";
+    private Timer? _searchDebounceTimer;
+
+    private string SearchQuery
+    {
+        get => _searchQuery;
+        set
+        {
+            if (_searchQuery != value)
+            {
+                _searchQuery = value;
+                DebounceSearch();
+            }
+        }
+    }
+
+    private List<SearchResult> SearchResults = new();
+    private bool IsLoading = false;
+    private Dictionary<int, int> ChildCountCache = new();
+    private (long Nodes, long Edges, long Tags)? Stats;
+
+    private TreeViewPopup TreePopup = default!;
+    private bool ShowTreePopup = false;
+
+    private string ToastMessage = "";
+    private string ToastType = "";
+    private Timer? ToastTimer;
+
+    private readonly string[] ExampleSearches = {
+        "shirt", "weapon", "hair", "eyes", "clothing", "armor",
+        "animals", "facial", "body", "pose", "background"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadStatsAsync();
+    }
+
+    private async Task LoadStatsAsync()
+    {
+        try
+        {
+            Stats = TagService.GetStats();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Failed to load stats: {ex.Message}");
+        }
+    }
+
+    private void DebounceSearch()
+    {
+        _searchDebounceTimer?.Dispose();
+        _searchDebounceTimer = new Timer(_ =>
+        {
+            InvokeAsync(() => {
+                PerformSearch();
+                StateHasChanged();
+            });
+        }, null, 300, Timeout.Infinite);
+    }
+
+    private void PerformSearch()
+    {
+        if (string.IsNullOrWhiteSpace(SearchQuery))
+        {
+            SearchResults.Clear();
+            return;
+        }
+
+        IsLoading = true;
+        try
+        {
+            var results = TagService.Search(SearchQuery.Trim(), 100).ToList();
+
+            // Sort to prioritize groups (categories) over individual tags
+            // Within each type, sort by score descending
+            SearchResults = results
+                .OrderBy(r => IsResultTag(r) ? 1 : 0)  // Groups first (IsTag = false)
+                .ThenByDescending(r => r.Score)
+                .ThenBy(r => r.Text)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Search failed: {ex.Message}");
+            SearchResults.Clear();
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private void ClearSearch()
+    {
+        SearchQuery = "";
+        SearchResults.Clear();
+        StateHasChanged();
+    }
+
+    private void SetSearchQuery(string query)
+    {
+        SearchQuery = query;
+    }
+
+    private int GetChildCount(int nodeId)
+    {
+        if (!ChildCountCache.TryGetValue(nodeId, out var count))
+        {
+            count = TagService.GetChildren(nodeId).Count();
+            ChildCountCache[nodeId] = count;
+        }
+        return count;
+    }
+
+    private async Task OnResultSelected(Node node)
+    {
+        // Single-click: open tree view for groups, do nothing for tags (they use copy/danbooru buttons)
+        if (!node.IsTag)
+        {
+            await ShowTreeView(node);
+        }
+    }
+
+    private async Task OnResultDoubleClicked(Node node)
+    {
+        // Double-click: copy tags, open tree view for groups (fallback)
+        if (node.IsTag)
+        {
+            await CopyTag(node);
+        }
+        else
+        {
+            await ShowTreeView(node);
+        }
+    }
+
+    private Node GetNodeFromResult(SearchResult result)
+    {
+        // Convert SearchResult to Node
+        return new Node(result.Id, result.Slug, result.Text, IsResultTag(result));
+    }
+
+    private bool IsResultTag(SearchResult result)
+    {
+        // Determine if result is a tag based on available data
+        // This is a simplified approach - you might want to query the database
+        // or add IsTag to the SearchResult record
+        var node = TagService.GetNodeById(result.Id);
+        return node?.IsTag ?? false;
+    }
+
+    private string GetParentInfo(int nodeId)
+    {
+        try
+        {
+            var breadcrumb = TagService.GetBreadcrumb(nodeId).ToList();
+
+            // If there's more than just the node itself, show parent info
+            if (breadcrumb.Count > 1)
+            {
+                // Get the immediate parent (second to last in breadcrumb)
+                var parent = breadcrumb[breadcrumb.Count - 2];
+
+                // If there are multiple levels, show a shortened path
+                if (breadcrumb.Count > 2)
+                {
+                    var root = breadcrumb[0];
+                    return $"{root.Text} › ... › {parent.Text}";
+                }
+                else
+                {
+                    return parent.Text;
+                }
+            }
+
+            return "";
+        }
+        catch
+        {
+            return "";
+        }
+    }
+
+    private async Task OnShowTreeView(Node node)
+    {
+        await ShowTreeView(node);
+    }
+
+    private async Task ShowTreeView(Node node)
+    {
+        ShowTreePopup = true;
+        StateHasChanged();
+        await TreePopup.ShowTreeAsync(node);
+    }
+
+    private async Task CloseTreePopup()
+    {
+        ShowTreePopup = false;
+        StateHasChanged();
+    }
+
+    private async Task OnTagCopied(Node node)
+    {
+        await CopyTag(node);
+    }
+
+    private async Task OnTagCopiedWithMessage((Node node, string message) data)
+    {
+        var (node, message) = data;
+        if (message.StartsWith("Copied:"))
+        {
+            ShowToast(message, "success");
+        }
+        else
+        {
+            ShowToast(message, "error");
+        }
+    }
+
+    private async Task OnDanbooruRequested(Node node)
+    {
+        ShowToast($"Opening {node.Text} on Danbooru...", "success");
+    }
+
+    private async Task CopyTag(Node node)
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", node.Slug);
+            ShowToast($"Copied: {node.Slug}", "success");
+        }
+        catch
+        {
+            ShowToast("Failed to copy tag", "error");
+        }
+    }
+
+    private void ShowToast(string message, string type)
+    {
+        ToastMessage = message;
+        ToastType = type;
+
+        ToastTimer?.Dispose();
+        ToastTimer = new Timer(_ => {
+            ToastMessage = "";
+            ToastType = "";
+            InvokeAsync(StateHasChanged);
+        }, null, 3000, Timeout.Infinite);
+
+        StateHasChanged();
+    }
+
+    private async Task OnSearchKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && SearchResults.Any())
+        {
+            var firstResult = SearchResults[0];
+            var node = GetNodeFromResult(firstResult);
+            if (IsResultTag(firstResult))
+            {
+                await CopyTag(node);
+            }
+            else
+            {
+                await ShowTreeView(node);
+            }
+        }
+        else if (e.Key == "Escape")
+        {
+            ClearSearch();
+        }
+    }
+
+    public void Dispose()
+    {
+        ToastTimer?.Dispose();
+        _searchDebounceTimer?.Dispose();
+    }
+}

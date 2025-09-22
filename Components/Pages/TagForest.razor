@@ -1,0 +1,345 @@
+@page "/tag-forest"
+@using DanbooruTaggingUI.Data
+@inject TagGraphService TagService
+@inject IJSRuntime JSRuntime
+@implements IDisposable
+
+<PageTitle>Tag Forest</PageTitle>
+
+<div class="tag-forest-container">
+    <div class="forest-header">
+        <div class="nav-links">
+            <a href="/tag-forest" class="nav-link active">🌲 Tree View</a>
+            <a href="/search" class="nav-link">🔍 Search</a>
+        </div>
+        @*
+        <h1 class="forest-title">
+            <span class="forest-icon">🌲</span>
+            Tag Forest
+            <span class="forest-subtitle">Explore the semantic wilderness</span>
+        </h1>*@
+        <div class="forest-stats">
+            @if (stats.HasValue)
+            {
+                <span class="stat-badge">🏷️ @stats.Value.Tags tags</span>
+                <span class="stat-badge">📁 @(stats.Value.Nodes - stats.Value.Tags) categories</span>
+                <span class="stat-badge">🔗 @stats.Value.Edges connections</span>
+            }
+        </div>
+
+        @* Temporarily hidden - will be re-enabled later
+        <div class="forest-actions">
+            <button class="reimport-btn" @onclick="ReimportData" disabled="@isReimporting">
+                @if (isReimporting)
+                {
+                    <span>🔄 Re-importing...</span>
+                }
+                else
+                {
+                    <span>🔄 Re-import CSV</span>
+                }
+            </button>
+        </div>
+        *@
+    </div>
+
+    <div class="forest-search-bar">
+        <div class="search-input-wrapper">
+            <input type="text"
+                   @bind="SearchQuery"
+                   @bind:event="oninput"
+                   @onkeydown="OnSearchKeyDown"
+                   placeholder="Search tags and groups to quickly find and expand them..."
+                   class="forest-search-input"
+                   autofocus />
+
+            @if (!string.IsNullOrEmpty(SearchQuery))
+            {
+                <button class="clear-search-btn" @onclick="ClearSearch">
+                    ×
+                </button>
+            }
+        </div>
+
+        @if (!string.IsNullOrEmpty(SearchQuery) && searchResults.Any())
+        {
+            <div class="forest-search-results">
+                <div class="search-results-header">
+                    <span>Found @searchResults.Count results - click to expand path</span>
+                </div>
+                <div class="search-results-list">
+                    @foreach (var result in searchResults.Take(10))
+                    {
+                        <div class="search-result-item" @onclick="() => ExpandToNode(result.Id)">
+                            <span class="result-icon">@(IsResultTag(result) ? "🏷️" : "📁")</span>
+                            <span class="result-text">@result.Text</span>
+                            @if (!string.IsNullOrEmpty(result.BestPath))
+                            {
+                                <span class="result-path">in @result.BestPath</span>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="forest-content">
+        @if (isLoading)
+        {
+            <div class="loading-spinner">
+                <div class="spinner"></div>
+                <p>Growing the forest...</p>
+            </div>
+        }
+        else
+        {
+            <div class="tree-roots">
+                @foreach (var root in rootNodes)
+                {
+                    <TreeNode Node="root"
+                              ExpandedNodes="expandedNodes"
+                              OnToggle="ToggleNode"
+                              TagService="TagService"
+                              Level="0"
+                              OnTagCopiedWithMessage="OnTagCopiedWithMessage"
+                              OnDanbooruRequested="OnDanbooruRequested" />
+                }
+            </div>
+        }
+    </div>
+
+    <!-- Toast Notifications -->
+    @if (!string.IsNullOrEmpty(ToastMessage))
+    {
+        <div class="toast @ToastType">
+            @ToastMessage
+        </div>
+    }
+</div>
+
+@code {
+    private List<Node> rootNodes = new();
+    private HashSet<int> expandedNodes = new();
+    private (long Nodes, long Edges, long Tags)? stats;
+    private bool isLoading = true;
+    private bool isReimporting = false;
+
+    private string ToastMessage = "";
+    private string ToastType = "";
+    private Timer? ToastTimer;
+
+    private string _searchQuery = "";
+    private Timer? _searchDebounceTimer;
+    private List<SearchResult> searchResults = new();
+
+    private string SearchQuery
+    {
+        get => _searchQuery;
+        set
+        {
+            if (_searchQuery != value)
+            {
+                _searchQuery = value;
+                DebounceSearch();
+            }
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        StateHasChanged();
+
+        await Task.Run(() =>
+        {
+            rootNodes = TagService.GetRoots(50).ToList();
+            stats = TagService.GetStats();
+        });
+
+        isLoading = false;
+        StateHasChanged();
+    }
+
+    private async Task ToggleNode(int nodeId)
+    {
+        if (expandedNodes.Contains(nodeId))
+        {
+            expandedNodes.Remove(nodeId);
+        }
+        else
+        {
+            expandedNodes.Add(nodeId);
+        }
+        StateHasChanged();
+    }
+
+    private async Task ReimportData()
+    {
+        isReimporting = true;
+        StateHasChanged();
+
+        try
+        {
+            await Task.Run(() =>
+            {
+                var dbPath = Path.Combine(FileSystem.AppDataDirectory, "tags.db");
+                var csvPath = Path.Combine(FileSystem.AppDataDirectory, "tags.csv");
+                var importer = new DanbooruTaggingUI.Data.TagImportService(dbPath, csvPath);
+                importer.ForceReimport();
+            });
+
+            // Reload the tree data
+            await LoadData();
+        }
+        finally
+        {
+            isReimporting = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnTagCopiedWithMessage((Node node, string message) data)
+    {
+        var (node, message) = data;
+        if (message.StartsWith("Copied:"))
+        {
+            ShowToast(message, "success");
+        }
+        else
+        {
+            ShowToast(message, "error");
+        }
+    }
+
+    private async Task OnDanbooruRequested(Node node)
+    {
+        ShowToast($"Opening {node.Text} on Danbooru...", "success");
+    }
+
+    private void ShowToast(string message, string type)
+    {
+        ToastMessage = message;
+        ToastType = type;
+
+        ToastTimer?.Dispose();
+        ToastTimer = new Timer(_ => {
+            ToastMessage = "";
+            ToastType = "";
+            InvokeAsync(StateHasChanged);
+        }, null, 3000, Timeout.Infinite);
+
+        StateHasChanged();
+    }
+
+    private void DebounceSearch()
+    {
+        _searchDebounceTimer?.Dispose();
+        _searchDebounceTimer = new Timer(_ =>
+        {
+            InvokeAsync(() => {
+                PerformSearch();
+                StateHasChanged();
+            });
+        }, null, 300, Timeout.Infinite);
+    }
+
+    private void PerformSearch()
+    {
+        if (string.IsNullOrWhiteSpace(SearchQuery))
+        {
+            searchResults.Clear();
+            return;
+        }
+
+        try
+        {
+            var results = TagService.Search(SearchQuery.Trim(), 20).ToList();
+            searchResults = results
+                .OrderBy(r => IsResultTag(r) ? 1 : 0)  // Groups first
+                .ThenByDescending(r => r.Score)
+                .ThenBy(r => r.Text)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Search failed: {ex.Message}");
+            searchResults.Clear();
+        }
+    }
+
+    private void ClearSearch()
+    {
+        SearchQuery = "";
+        searchResults.Clear();
+        StateHasChanged();
+    }
+
+    private bool IsResultTag(SearchResult result)
+    {
+        var node = TagService.GetNodeById(result.Id);
+        return node?.IsTag ?? false;
+    }
+
+    private async Task ExpandToNode(int nodeId)
+    {
+        try
+        {
+            // Get the full path to this node
+            var breadcrumb = TagService.GetBreadcrumb(nodeId).ToList();
+
+            // Expand all parent nodes to make this node visible
+            foreach (var node in breadcrumb.Take(breadcrumb.Count - 1)) // All except the target node
+            {
+                if (!expandedNodes.Contains(node.Id))
+                {
+                    expandedNodes.Add(node.Id);
+                }
+            }
+
+            // If it's a group, expand it too
+            var targetNode = TagService.GetNodeById(nodeId);
+            if (targetNode != null && !targetNode.IsTag)
+            {
+                if (!expandedNodes.Contains(nodeId))
+                {
+                    expandedNodes.Add(nodeId);
+                }
+            }
+
+            // Clear the search to show the tree
+            ClearSearch();
+
+            ShowToast($"Expanded path to: {targetNode?.Text ?? "node"}", "success");
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Failed to expand to node: {ex.Message}");
+            ShowToast("Failed to expand path", "error");
+        }
+    }
+
+    private async Task OnSearchKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && searchResults.Any())
+        {
+            await ExpandToNode(searchResults[0].Id);
+        }
+        else if (e.Key == "Escape")
+        {
+            ClearSearch();
+        }
+    }
+
+    public void Dispose()
+    {
+        ToastTimer?.Dispose();
+        _searchDebounceTimer?.Dispose();
+    }
+}

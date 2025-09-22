@@ -1,0 +1,67 @@
+.page {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+main {
+    flex: 1;
+    background: linear-gradient(135deg, #fefffe, #f8fbf8);
+    min-height: calc(100vh - 4rem);
+}
+
+.sidebar {
+    /* Sidebar styles are handled in NavMenu component */
+}
+
+.content {
+    padding: 0;
+    width: 100%;
+    overflow-x: hidden;
+}
+
+/* Mobile layout */
+@media (max-width: 640px) {
+    .page {
+        flex-direction: column;
+    }
+
+    main {
+        min-height: calc(100vh - 3.5rem);
+        margin-top: 3.5rem;
+    }
+
+    .content {
+        padding: 0;
+    }
+}
+
+/* Desktop layout */
+@media (min-width: 641px) {
+    .page {
+        flex-direction: row;
+    }
+
+    .sidebar {
+        width: 250px;
+        height: 100vh;
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 1000;
+    }
+
+    main {
+        margin-left: 250px;
+        margin-top: 4rem;
+        min-height: calc(100vh - 4rem);
+        width: calc(100% - 250px);
+    }
+
+    .content {
+        padding: 0;
+        max-width: 100%;
+    }
+}

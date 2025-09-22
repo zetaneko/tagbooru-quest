@@ -1,0 +1,220 @@
+@using DanbooruTaggingUI.Data
+@inject IJSRuntime JSRuntime
+
+<div class="tag-node @CssClass"
+     @onclick="OnClick"
+     @ondblclick="OnDoubleClick"
+     style="margin-left: @(Depth * 20)px;">
+
+    <div class="tag-node-content @(IsSelected ? "selected" : "")">
+        @if (HasChildren)
+        {
+            <button class="tag-expand-btn @(IsExpanded ? "expanded" : "")"
+                    @onclick="OnToggleExpand"
+                    @onclick:stopPropagation="true">
+                @(IsExpanded ? "▼" : "▶")
+            </button>
+        }
+        else
+        {
+            <span class="tag-expand-spacer"></span>
+        }
+
+        <span class="tag-node-icon">
+            @(Node.IsTag ? "🏷️" : "📁")
+        </span>
+
+        <span class="tag-node-name">@Node.Text</span>
+
+        @if (!Node.IsTag && ChildCount > 0)
+        {
+            <span class="tag-node-count">(@ChildCount)</span>
+        }
+
+        <div class="tag-node-actions">
+            @if (Node.IsTag)
+            {
+                <button class="tag-copy-btn"
+                        @onclick="OnCopyTag"
+                        @onclick:stopPropagation="true"
+                        title="Copy tag to clipboard">
+                    📋
+                </button>
+                <button class="tag-danbooru-btn"
+                        @onclick="OnOpenDanbooru"
+                        @onclick:stopPropagation="true"
+                        title="View on Danbooru">
+                    🔗
+                </button>
+            }
+
+            @if (ShowTreeViewButton && !Node.IsTag)
+            {
+                <button class="tag-tree-btn"
+                        @onclick="OnShowTreeView"
+                        @onclick:stopPropagation="true"
+                        title="Show tree view">
+                    🌳
+                </button>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public Node Node { get; set; } = default!;
+    [Parameter] public bool IsSelected { get; set; }
+    [Parameter] public bool IsExpanded { get; set; }
+    [Parameter] public bool HasChildren { get; set; }
+    [Parameter] public int ChildCount { get; set; }
+    [Parameter] public int Depth { get; set; } = 0;
+    [Parameter] public bool ShowTreeViewButton { get; set; } = false;
+    [Parameter] public string CssClass { get; set; } = "";
+
+    [Parameter] public EventCallback<Node> OnNodeClick { get; set; }
+    [Parameter] public EventCallback<Node> OnNodeDoubleClick { get; set; }
+    [Parameter] public EventCallback<Node> OnToggleExpanded { get; set; }
+    [Parameter] public EventCallback<Node> OnCopyTagRequested { get; set; }
+    [Parameter] public EventCallback<Node> OnShowTreeViewRequested { get; set; }
+    [Parameter] public EventCallback<(Node, string)> OnTagCopiedWithMessage { get; set; }
+    [Parameter] public EventCallback<Node> OnDanbooruRequested { get; set; }
+
+    private async Task OnClick()
+    {
+        await OnNodeClick.InvokeAsync(Node);
+    }
+
+    private async Task OnDoubleClick()
+    {
+        await OnNodeDoubleClick.InvokeAsync(Node);
+    }
+
+    private async Task OnToggleExpand()
+    {
+        await OnToggleExpanded.InvokeAsync(Node);
+    }
+
+    private async Task OnCopyTag()
+    {
+        if (Node.IsTag)
+        {
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", Node.Slug);
+
+                // Call both the old callback for backward compatibility and the new one with message
+                await OnCopyTagRequested.InvokeAsync(Node);
+                await OnTagCopiedWithMessage.InvokeAsync((Node, $"Copied: {Node.Slug}"));
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to copy tag: {ex.Message}");
+                await OnTagCopiedWithMessage.InvokeAsync((Node, "Failed to copy tag"));
+            }
+        }
+    }
+
+    private async Task OnOpenDanbooru()
+    {
+        if (Node.IsTag)
+        {
+            var url = $"https://danbooru.donmai.us/posts?tags={Uri.EscapeDataString(Node.Slug)}";
+            await JSRuntime.InvokeVoidAsync("window.open", url, "_blank");
+            await OnDanbooruRequested.InvokeAsync(Node);
+        }
+    }
+
+    private async Task OnShowTreeView()
+    {
+        await OnShowTreeViewRequested.InvokeAsync(Node);
+    }
+}
+
+<style>
+    .tag-node {
+        user-select: none;
+        cursor: pointer;
+    }
+
+    .tag-node-content {
+        display: flex;
+        align-items: center;
+        padding: 4px 8px;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+    }
+
+    .tag-node-content:hover {
+        background-color: rgba(0, 123, 255, 0.1);
+    }
+
+    .tag-node-content.selected {
+        background-color: rgba(0, 123, 255, 0.2);
+    }
+
+    .tag-expand-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 12px;
+        width: 16px;
+        height: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 4px;
+    }
+
+    .tag-expand-spacer {
+        width: 20px;
+        margin-right: 4px;
+    }
+
+    .tag-node-icon {
+        margin-right: 6px;
+        font-size: 14px;
+    }
+
+    .tag-node-name {
+        flex-grow: 1;
+        font-size: 14px;
+    }
+
+    .tag-node-count {
+        color: #666;
+        font-size: 12px;
+        margin-left: 8px;
+    }
+
+    .tag-node-actions {
+        display: flex;
+        gap: 4px;
+        margin-left: 8px;
+    }
+
+    .tag-copy-btn, .tag-tree-btn, .tag-danbooru-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 12px;
+        opacity: 0.7;
+        transition: opacity 0.2s;
+        padding: 2px;
+        border-radius: 3px;
+    }
+
+    .tag-copy-btn:hover, .tag-tree-btn:hover, .tag-danbooru-btn:hover {
+        opacity: 1;
+        background: rgba(0, 123, 255, 0.1);
+    }
+
+    .tag-danbooru-btn:hover {
+        background: rgba(255, 152, 0, 0.1);
+    }
+
+    .tag-node-content:not(:hover) .tag-copy-btn,
+    .tag-node-content:not(:hover) .tag-tree-btn,
+    .tag-node-content:not(:hover) .tag-danbooru-btn {
+        opacity: 0.3;
+    }
+</style>

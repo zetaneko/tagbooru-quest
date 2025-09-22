@@ -1,0 +1,419 @@
+.tag-forest-container {
+    padding: 1rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.forest-header {
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.nav-links {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+
+.nav-link {
+    text-decoration: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 25px;
+    color: #6b8e66;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    background: linear-gradient(135deg, #f8fbf8, #f0f8f0);
+    border: 1px solid #e0f0e0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.nav-link:hover {
+    background: linear-gradient(135deg, #e8f5e8, #d4edd4);
+    color: #2d5a27;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.nav-link.active {
+    background: linear-gradient(135deg, #2d5a27, #4a7c59);
+    color: white;
+    box-shadow: 0 4px 12px rgba(45, 90, 39, 0.3);
+}
+
+.forest-title {
+    font-size: 2.5rem;
+    color: #2d5a27;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.forest-icon {
+    font-size: 3rem;
+    filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.1));
+}
+
+.forest-subtitle {
+    font-size: 1rem;
+    color: #6b8e66;
+    font-weight: 300;
+    font-style: italic;
+    margin-left: 1rem;
+}
+
+.forest-stats {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.forest-actions {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+.reimport-btn {
+    background: linear-gradient(135deg, #ff9800, #f57c00);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 25px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+    box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
+}
+
+.reimport-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #f57c00, #ef6c00);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(255, 152, 0, 0.4);
+}
+
+.reimport-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.stat-badge {
+    background: linear-gradient(135deg, #e8f5e8, #d4edd4);
+    color: #2d5a27;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    border: 1px solid #c3e6c3;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.forest-content {
+    background: linear-gradient(135deg, #f8fbf8, #f0f8f0);
+    border-radius: 12px;
+    padding: 1.5rem;
+    border: 1px solid #e0f0e0;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    min-height: 400px;
+}
+
+.loading-spinner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: #6b8e66;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #e0f0e0;
+    border-top: 4px solid #6b8e66;
+    border-radius: 50%;
+    margin-bottom: 1rem;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Forest Search Bar */
+.forest-search-bar {
+    margin-bottom: 1.5rem;
+    background: linear-gradient(135deg, #fefffe, #f8fbf8);
+    border-radius: 12px;
+    padding: 1rem;
+    border: 1px solid #e0f0e0;
+}
+
+.search-input-wrapper {
+    position: relative;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.forest-search-input {
+    width: 100%;
+    padding: 0.875rem 1.25rem;
+    font-size: 1rem;
+    border: 2px solid #e0f0e0;
+    border-radius: 25px;
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+    background: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.forest-search-input:focus {
+    outline: none;
+    border-color: #6b8e66;
+    box-shadow: 0 0 0 4px rgba(107, 142, 102, 0.2);
+}
+
+.clear-search-btn {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    font-size: 1.25rem;
+    cursor: pointer;
+    color: #6b8e66;
+    transition: color 0.3s ease;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.clear-search-btn:hover {
+    color: #2d5a27;
+}
+
+/* Search Results */
+.forest-search-results {
+    margin-top: 1rem;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #e0f0e0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.search-results-header {
+    padding: 0.75rem 1rem;
+    background: linear-gradient(135deg, #f0f8f0, #e8f5e8);
+    border-bottom: 1px solid #e0f0e0;
+    font-size: 0.9rem;
+    color: #2d5a27;
+    font-weight: 500;
+}
+
+.search-results-list {
+    padding: 0.5rem 0;
+}
+
+.search-result-item {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    gap: 0.75rem;
+}
+
+.search-result-item:hover {
+    background: linear-gradient(135deg, #f8fbf8, #f0f8f0);
+    transform: translateX(4px);
+}
+
+.result-icon {
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.result-text {
+    font-weight: 500;
+    color: #2d5a27;
+    flex-shrink: 0;
+}
+
+.result-path {
+    font-size: 0.85rem;
+    color: #6b8e66;
+    font-style: italic;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+}
+
+.search-results-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.search-results-list::-webkit-scrollbar-track {
+    background: #f0f8f0;
+}
+
+.search-results-list::-webkit-scrollbar-thumb {
+    background: #c3e6c3;
+    border-radius: 3px;
+}
+
+.search-results-list::-webkit-scrollbar-thumb:hover {
+    background: #6b8e66;
+}
+
+.tree-roots {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .tag-forest-container {
+        padding: 0.75rem;
+    }
+
+    .forest-title {
+        font-size: 1.8rem;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .forest-subtitle {
+        margin-left: 0;
+        font-size: 0.9rem;
+    }
+
+    .forest-icon {
+        font-size: 2rem;
+    }
+
+    .nav-links {
+        gap: 0.5rem;
+    }
+
+    .nav-link {
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+    }
+
+    .forest-stats {
+        gap: 0.5rem;
+    }
+
+    .stat-badge {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.8rem;
+    }
+
+    .reimport-btn {
+        padding: 0.625rem 1.25rem;
+        font-size: 0.8rem;
+    }
+
+    .forest-content {
+        padding: 1rem;
+    }
+
+    .forest-search-bar {
+        margin-bottom: 1rem;
+        padding: 0.75rem;
+    }
+
+    .forest-search-input {
+        padding: 0.75rem 1rem;
+        font-size: 0.9rem;
+    }
+
+    .search-result-item {
+        padding: 0.625rem 0.75rem;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+    }
+
+    .result-path {
+        font-size: 0.8rem;
+        white-space: normal;
+        margin-left: 1.25rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .forest-title {
+        font-size: 1.5rem;
+    }
+
+    .forest-subtitle {
+        font-size: 0.8rem;
+    }
+
+    .forest-stats {
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .forest-actions {
+        margin-bottom: 0.5rem;
+    }
+
+    .toast {
+        bottom: 1rem;
+        right: 1rem;
+        left: 1rem;
+        padding: 0.875rem 1.25rem;
+    }
+}
+
+/* Toast notifications */
+.toast {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    color: white;
+    font-weight: 500;
+    z-index: 1100;
+    animation: slideIn 0.3s ease-out;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.toast.success {
+    background: linear-gradient(135deg, #2d5a27, #4a7c59);
+}
+
+.toast.error {
+    background: linear-gradient(135deg, #d32f2f, #f44336);
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}

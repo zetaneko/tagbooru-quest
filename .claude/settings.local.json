@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/fukac/source/repos/NovelAIPowerTools/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

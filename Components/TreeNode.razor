@@ -1,0 +1,314 @@
+@using DanbooruTaggingUI.Data
+@inject IJSRuntime JSRuntime
+
+<div class="tree-node" style="margin-left: @(Level * 24)px">
+    <div class="node-content @(Node.IsTag ? "is-tag" : "is-category")" @onclick="HandleClick">
+        <span class="node-toggle @(hasChildren ? "has-children" : "no-children") @(isExpanded ? "expanded" : "collapsed")">
+            @if (hasChildren)
+            {
+                @(isExpanded ? "🔽" : "▶️")
+            }
+            else
+            {
+                <span class="leaf-icon">@(Node.IsTag ? "🏷️" : "📁")</span>
+            }
+        </span>
+
+        <span class="node-text">
+            @Node.Text
+        </span>
+
+        @if (Node.IsTag)
+        {
+            <span class="tag-badge">TAG</span>
+            <div class="tag-actions">
+                <button class="tree-copy-btn"
+                        @onclick="OnCopyTag"
+                        @onclick:stopPropagation="true"
+                        title="Copy tag to clipboard">
+                    📋
+                </button>
+                <button class="tree-danbooru-btn"
+                        @onclick="OnOpenDanbooru"
+                        @onclick:stopPropagation="true"
+                        title="View on Danbooru">
+                    🔗
+                </button>
+            </div>
+        }
+
+        @if (hasChildren && !isExpanded)
+        {
+            <span class="children-count">(@childrenCount)</span>
+        }
+    </div>
+
+    @if (isExpanded && children.Any())
+    {
+        <div class="node-children">
+            @foreach (var child in children)
+            {
+                <TreeNode Node="child"
+                          ExpandedNodes="ExpandedNodes"
+                          OnToggle="OnToggle"
+                          TagService="TagService"
+                          Level="Level + 1"
+                          OnTagCopiedWithMessage="OnTagCopiedWithMessage"
+                          OnDanbooruRequested="OnDanbooruRequested" />
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public Node Node { get; set; } = default!;
+    [Parameter] public HashSet<int> ExpandedNodes { get; set; } = default!;
+    [Parameter] public Func<int, Task> OnToggle { get; set; } = default!;
+    [Parameter] public TagGraphService TagService { get; set; } = default!;
+    [Parameter] public int Level { get; set; }
+    [Parameter] public EventCallback<(Node, string)> OnTagCopiedWithMessage { get; set; }
+    [Parameter] public EventCallback<Node> OnDanbooruRequested { get; set; }
+
+    private List<Node> children = new();
+    private bool hasChildren;
+    private int childrenCount;
+    private bool isExpanded => ExpandedNodes.Contains(Node.Id);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadChildren();
+    }
+
+    private async Task LoadChildren()
+    {
+        if (isExpanded && !children.Any())
+        {
+            await Task.Run(() =>
+            {
+                children = TagService.GetChildren(Node.Id).ToList();
+            });
+        }
+
+        // Check if node has children (without loading them all)
+        if (!hasChildren && childrenCount == 0)
+        {
+            await Task.Run(() =>
+            {
+                var firstChild = TagService.GetChildren(Node.Id).FirstOrDefault();
+                hasChildren = firstChild != null;
+                if (hasChildren && !isExpanded)
+                {
+                    childrenCount = TagService.GetChildren(Node.Id).Count();
+                }
+            });
+        }
+    }
+
+    private async Task HandleClick()
+    {
+        if (hasChildren)
+        {
+            await OnToggle(Node.Id);
+            await LoadChildren();
+        }
+    }
+
+    private async Task OnCopyTag()
+    {
+        if (Node.IsTag)
+        {
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", Node.Slug);
+                await OnTagCopiedWithMessage.InvokeAsync((Node, $"Copied: {Node.Slug}"));
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to copy tag: {ex.Message}");
+                await OnTagCopiedWithMessage.InvokeAsync((Node, "Failed to copy tag"));
+            }
+        }
+    }
+
+    private async Task OnOpenDanbooru()
+    {
+        if (Node.IsTag)
+        {
+            var url = $"https://danbooru.donmai.us/posts?tags={Uri.EscapeDataString(Node.Slug)}";
+            await JSRuntime.InvokeVoidAsync("window.open", url, "_blank");
+            await OnDanbooruRequested.InvokeAsync(Node);
+        }
+    }
+}
+
+<style>
+    .tree-node {
+        user-select: none;
+        margin-bottom: 2px;
+    }
+
+    .node-content {
+        display: flex;
+        align-items: center;
+        padding: 8px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+        gap: 8px;
+        min-height: 40px;
+    }
+
+    .node-content:hover {
+        background: rgba(107, 142, 102, 0.1);
+        transform: translateX(4px);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .node-content.is-tag {
+        background: linear-gradient(135deg, #fff7e6, #ffecd1);
+        border: 1px solid #f4d8a7;
+        color: #8b4513;
+    }
+
+    .node-content.is-tag:hover {
+        background: linear-gradient(135deg, #ffecd1, #ffe0b3);
+        border-color: #e6c28f;
+    }
+
+    .node-content.is-category {
+        background: linear-gradient(135deg, #f0f8ff, #e6f3ff);
+        border: 1px solid #cce7ff;
+        color: #2c5aa0;
+    }
+
+    .node-content.is-category:hover {
+        background: linear-gradient(135deg, #e6f3ff, #d9edff);
+        border-color: #b3d9ff;
+    }
+
+    .node-toggle {
+        font-size: 14px;
+        min-width: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.2s ease;
+    }
+
+    .node-toggle.has-children {
+        cursor: pointer;
+    }
+
+    .node-toggle.expanded {
+        transform: rotate(0deg);
+    }
+
+    .node-toggle.collapsed {
+        transform: rotate(-90deg);
+    }
+
+    .leaf-icon {
+        opacity: 0.7;
+        font-size: 16px;
+    }
+
+    .node-text {
+        flex: 1;
+        font-weight: 500;
+        font-size: 14px;
+        text-transform: capitalize;
+    }
+
+    .tag-badge {
+        background: linear-gradient(135deg, #ff6b6b, #ff5252);
+        color: white;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .children-count {
+        background: rgba(107, 142, 102, 0.2);
+        color: #2d5a27;
+        padding: 2px 6px;
+        border-radius: 10px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .tag-actions {
+        display: flex;
+        gap: 4px;
+        margin-left: 8px;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+
+    .node-content:hover .tag-actions {
+        opacity: 1;
+    }
+
+    .tree-copy-btn, .tree-danbooru-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 12px;
+        padding: 2px 4px;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+        opacity: 0.8;
+    }
+
+    .tree-copy-btn:hover {
+        background: rgba(0, 123, 255, 0.15);
+        opacity: 1;
+        transform: scale(1.1);
+    }
+
+    .tree-danbooru-btn:hover {
+        background: rgba(255, 152, 0, 0.15);
+        opacity: 1;
+        transform: scale(1.1);
+    }
+
+    .node-children {
+        position: relative;
+    }
+
+    .node-children::before {
+        content: '';
+        position: absolute;
+        left: 8px;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: linear-gradient(180deg, #c3e6c3, transparent);
+        opacity: 0.5;
+    }
+
+    /* Level-based styling */
+    .tree-node[style*="margin-left: 0px"] .node-content {
+        font-size: 16px;
+        font-weight: 600;
+        border-width: 2px;
+    }
+
+    .tree-node[style*="margin-left: 24px"] .node-content {
+        font-size: 15px;
+    }
+
+    .tree-node[style*="margin-left: 48px"] .node-content {
+        font-size: 14px;
+    }
+
+    /* Animation for expanding/collapsing */
+    .node-children {
+        overflow: hidden;
+        transition: all 0.3s ease-out;
+    }
+</style>
