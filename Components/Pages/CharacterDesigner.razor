@@ -1,0 +1,308 @@
+@page "/character"
+@using TagbooruQuest.Models.CharacterDesigner
+@using TagbooruQuest.Services.CharacterDesigner
+@using TagbooruQuest.Data
+@inject IDesignerRegistry DesignerRegistry
+@inject ITagSpriteResolver SpriteResolver
+@inject ICharacterBuildState BuildState
+@inject TagbooruQuest.Data.TagGraphService TagGraphService
+@inject IJSRuntime JSRuntime
+
+<div class="character-designer">
+    <!-- Group Tabs -->
+    <div class="group-tabs">
+        @foreach (var group in DesignerRegistry.Config.Groups)
+        {
+            <button class="group-tab @(activeGroupKey == group.Key ? "active" : "")"
+                    @onclick="() => SetActiveGroup(group.Key)">
+                @if (!string.IsNullOrEmpty(group.Icon))
+                {
+                    <span class="group-icon">@group.Icon</span>
+                }
+                <span class="group-title">@group.Title</span>
+            </button>
+        }
+    </div>
+
+    <!-- Panel Host -->
+    <div class="panel-host">
+        @if (activeGroup != null)
+        {
+            @foreach (var panel in activeGroup.Panels)
+            {
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <h3 class="panel-title">@panel.Title</h3>
+                        <div class="panel-selections">
+                            @{
+                                var selections = BuildState.GetSelections(panel.Key);
+                            }
+                            @if (selections.Any())
+                            {
+                                @if (panel.SelectionMode == SelectionMode.Single)
+                                {
+                                    var selection = selections.First();
+                                    <div class="selected-preview">
+                                        <img src="@selection.ImageUrl" alt="@selection.Display"
+                                             onerror="this.src='/img/tagging_sprites/default.jpg'; this.onerror=null;" />
+                                        <span class="selection-label">@selection.Display</span>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="selection-count">@selections.Count selected</span>
+                                }
+                            }
+                            else
+                            {
+                                <span class="no-selection">None selected</span>
+                            }
+                        </div>
+                    </div>
+
+                    @foreach (var source in panel.Sources)
+                    {
+                        <div class="source-row">
+                            <div class="source-header">
+                                <h4 class="source-title">@(source.Title ?? "Options")</h4>
+                                <button class="expand-btn" @onclick="() => ToggleSourceExpanded(panel.Key, source)">
+                                    @(IsSourceExpanded(panel.Key, source) ? "▼" : "▶")
+                                </button>
+                            </div>
+
+                            @if (IsSourceExpanded(panel.Key, source))
+                            {
+                                <div class="source-options" style="max-height: 200px; overflow-y: auto;">
+                                    @{
+                                        var sourceOptions = GetSourceOptions(panel.Key, source);
+                                    }
+                                    @if (sourceOptions?.Any() == true)
+                                    {
+                                        <div class="tile-grid-inline">
+                                            @foreach (var option in sourceOptions)
+                                            {
+                                                var isSelected = BuildState.GetSelections(panel.Key)
+                                                    .Any(s => s.CanonicalTag == option.CanonicalTag);
+
+                                                <div class="tile-inline @(isSelected ? "selected" : "")"
+                                                     @onclick="() => SelectOption(panel, option)">
+                                                    <img src="@option.ImageUrl" alt="@option.Display" loading="lazy" />
+                                                    <span class="tile-label">@option.Display</span>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="loading-options">Loading...</div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        }
+    </div>
+
+    <!-- Prompt Bar -->
+    <div class="prompt-bar">
+        <div class="prompt-content">
+            <div class="prompt-chips">
+                @foreach (var selection in BuildState.GetAllSelections())
+                {
+                    <span class="prompt-chip">@selection.Display</span>
+                }
+            </div>
+            <div class="prompt-actions">
+                <button class="action-btn" @onclick="CopyPrompt">Copy</button>
+                <button class="action-btn reset" @onclick="ResetSelections">Reset</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@code {
+    private string activeGroupKey = "hair"; // Updated to match new config
+    private GroupConfig? activeGroup;
+    private Dictionary<string, Dictionary<SourceConfig, bool>> expandedSources = new();
+    private Dictionary<string, Dictionary<SourceConfig, List<TagOption>>> sourceOptionsCache = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        activeGroup = DesignerRegistry.GetGroup(activeGroupKey);
+
+        BuildState.OnStateChanged += StateHasChanged;
+
+        // Validate configuration in background
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await DesignerRegistry.ValidateConfigurationAsync();
+            }
+            catch (Exception ex)
+            {
+            }
+        });
+    }
+
+    public void Dispose()
+    {
+        BuildState.OnStateChanged -= StateHasChanged;
+    }
+
+    private void SetActiveGroup(string groupKey)
+    {
+        activeGroupKey = groupKey;
+        activeGroup = DesignerRegistry.GetGroup(groupKey);
+        StateHasChanged();
+    }
+
+    private async Task ToggleSourceExpanded(string panelKey, SourceConfig source)
+    {
+        if (!expandedSources.ContainsKey(panelKey))
+            expandedSources[panelKey] = new Dictionary<SourceConfig, bool>();
+
+        var isExpanded = expandedSources[panelKey].ContainsKey(source) && expandedSources[panelKey][source];
+        expandedSources[panelKey][source] = !isExpanded;
+
+        if (!isExpanded && !HasCachedOptions(panelKey, source))
+        {
+            await LoadSourceOptions(panelKey, source);
+        }
+
+        StateHasChanged();
+    }
+
+    private bool IsSourceExpanded(string panelKey, SourceConfig source)
+    {
+        return expandedSources.ContainsKey(panelKey) &&
+               expandedSources[panelKey].ContainsKey(source) &&
+               expandedSources[panelKey][source];
+    }
+
+    private bool HasCachedOptions(string panelKey, SourceConfig source)
+    {
+        return sourceOptionsCache.ContainsKey(panelKey) &&
+               sourceOptionsCache[panelKey].ContainsKey(source);
+    }
+
+    private List<TagOption>? GetSourceOptions(string panelKey, SourceConfig source)
+    {
+        if (sourceOptionsCache.ContainsKey(panelKey) &&
+            sourceOptionsCache[panelKey].ContainsKey(source))
+        {
+            return sourceOptionsCache[panelKey][source];
+        }
+        return null;
+    }
+
+    private async Task LoadSourceOptions(string panelKey, SourceConfig source)
+    {
+        try
+        {
+            var options = new List<TagOption>();
+
+            if (source.Type == SourceType.DbQuery && source.DbPath != null)
+            {
+                var dbOptions = await LoadDbQueryOptions(source.DbPath);
+                options.AddRange(dbOptions);
+            }
+            else if (source.Type == SourceType.FileGlob && !string.IsNullOrEmpty(source.FileGlob))
+            {
+                var fileOptions = await SpriteResolver.DiscoverByFileGlobAsync(source.FileGlob);
+                options.AddRange(fileOptions);
+            }
+
+            // Sort options
+            options = options.OrderBy(o => o.Display).ToList();
+
+            // Cache the results
+            if (!sourceOptionsCache.ContainsKey(panelKey))
+                sourceOptionsCache[panelKey] = new Dictionary<SourceConfig, List<TagOption>>();
+
+            sourceOptionsCache[panelKey][source] = options;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading source options: {ex.Message}");
+        }
+    }
+
+    private async Task<List<TagOption>> LoadDbQueryOptions(List<string> dbPath)
+    {
+        var options = new List<TagOption>();
+
+        try
+        {
+            // Navigate to target node
+            Node? currentNode = null;
+
+            for (int i = 0; i < dbPath.Count; i++)
+            {
+                if (currentNode == null)
+                {
+                    var searchResults = TagGraphService.Search(dbPath[i], 10);
+                    currentNode = searchResults
+                        .Select(r => TagGraphService.GetNodeById(r.Id))
+                        .FirstOrDefault(n => n != null &&
+                                       n.Text.Equals(dbPath[i], StringComparison.OrdinalIgnoreCase));
+                }
+                else
+                {
+                    var children = TagGraphService.GetChildren(currentNode.Id);
+                    currentNode = children.FirstOrDefault(c =>
+                        c.Text.Equals(dbPath[i], StringComparison.OrdinalIgnoreCase) ||
+                        c.Text.Replace(" ", "_").Equals(dbPath[i], StringComparison.OrdinalIgnoreCase) ||
+                        c.Text.Replace("_", " ").Equals(dbPath[i], StringComparison.OrdinalIgnoreCase));
+                }
+
+                if (currentNode == null) break;
+            }
+
+            if (currentNode != null)
+            {
+                var children = TagGraphService.GetChildren(currentNode.Id);
+                var leafTags = children.Where(c => c.IsTag);
+
+                foreach (var tag in leafTags)
+                {
+                    options.Add(SpriteResolver.ResolveTag(tag.Text));
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading DB query for path {string.Join("/", dbPath)}: {ex.Message}");
+        }
+
+        return options;
+    }
+
+    private void SelectOption(PanelConfig panel, TagOption option)
+    {
+        BuildState.ToggleSelection(
+            panel.Key,
+            panel.PromptOrderWeight,
+            panel.SelectionMode,
+            option
+        );
+    }
+
+    private async Task CopyPrompt()
+    {
+        var prompt = BuildState.BuildPrompt();
+        if (!string.IsNullOrWhiteSpace(prompt))
+        {
+            await JSRuntime.InvokeVoidAsync("copyToClipboard", prompt);
+        }
+    }
+
+    private void ResetSelections()
+    {
+        BuildState.Reset();
+    }
+}

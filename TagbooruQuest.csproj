@@ -84,6 +84,14 @@
     </ItemGroup>
 
     <ItemGroup>
+      <None Remove="wwwroot\character-designer-config.json" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <MauiAsset Include="wwwroot\character-designer-config.json">
+        <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+        <LogicalName>character-designer-config.json</LogicalName>
+      </MauiAsset>
       <Content Update="wwwroot\img\tagging_sprites\body\eyes\eye color\colorbase.jpg">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </Content>

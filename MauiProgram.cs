@@ -1,5 +1,6 @@
 ﻿using TagbooruQuest.Data;
 using TagbooruQuest.Services;
+using TagbooruQuest.Services.CharacterDesigner;
 using Microsoft.Extensions.Logging;
 
 namespace TagbooruQuest
@@ -39,6 +40,11 @@ namespace TagbooruQuest
             builder.Services.AddMauiBlazorWebView();
             builder.Services.AddSingleton(new TagGraphService(Path.Combine(FileSystem.AppDataDirectory, "tags.db")));
             builder.Services.AddScoped<PromptBuilderService>();
+
+            // Character Designer services
+            builder.Services.AddSingleton<IDesignerRegistry, DesignerRegistry>();
+            builder.Services.AddScoped<ITagSpriteResolver, TagSpriteResolver>();
+            builder.Services.AddScoped<ICharacterBuildState, CharacterBuildState>();
 
 
 #if DEBUG

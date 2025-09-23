@@ -1,0 +1,87 @@
+{
+  "groups": [
+    {
+      "key": "hair",
+      "title": "Hair",
+      "icon": "💇",
+      "panels": [
+        {
+          "key": "hair_color",
+          "title": "Hair Color",
+          "selectionMode": "Single",
+          "promptOrderWeight": 20,
+          "sources": [
+            {
+              "type": "DbQuery",
+              "title": "Specific Colors",
+              "dbPath": [ "Body", "Hair", "Hair Color", "Specific colors" ]
+            },
+            {
+              "type": "DbQuery",
+              "title": "Multiple Colors",
+              "dbPath": [ "Body", "Hair", "Hair Color", "Multiple colors" ]
+            }
+          ]
+        },
+        {
+          "key": "hairstyle",
+          "title": "Hairstyle",
+          "selectionMode": "Single",
+          "promptOrderWeight": 21,
+          "sources": [
+            {
+              "type": "DbQuery",
+              "title": "Hair Length",
+              "dbPath": ["Body", "Hair", "Hair Length"]
+            },
+            {
+              "type": "DbQuery",
+              "title": "Hair Styling",
+              "dbPath": ["Body", "Hair", "Hair Styling"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "eyes",
+      "title": "Eyes",
+      "icon": "👀",
+      "panels": [
+        {
+          "key": "eye_color",
+          "title": "Eye Color",
+          "selectionMode": "Single",
+          "promptOrderWeight": 30,
+          "sources": [
+            {
+              "type": "DbQuery",
+              "title": "Eye Colors",
+              "dbPath": ["Body", "Eyes", "Eye color"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "expression",
+      "title": "Expression",
+      "icon": "😊",
+      "panels": [
+        {
+          "key": "facial_expression",
+          "title": "Facial Expression",
+          "selectionMode": "Single",
+          "promptOrderWeight": 40,
+          "sources": [
+            {
+              "type": "DbQuery",
+              "title": "Facial Emotions",
+              "dbPath": ["Body", "Face", "Emotions"]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
