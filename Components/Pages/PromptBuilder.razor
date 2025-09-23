@@ -1,6 +1,7 @@
 @page "/prompt-builder"
 @using TagbooruQuest.Models
 @using TagbooruQuest.Services
+@using TagbooruQuest.Data
 @inject PromptBuilderService PromptBuilderService
 @inject IJSRuntime JSRuntime
 @implements IDisposable
@@ -17,29 +18,9 @@
         <!-- SVG Figure -->
         <div class="figure-container">
             <svg viewBox="0 0 400 600" class="anime-figure">
-                <!-- Head -->
-                <ellipse cx="200" cy="80" rx="45" ry="55" class="body-part clickable"
-                         @onclick="() => OpenTagModal(BodyPartType.Head)" />
-
-                <!-- Hair (larger area around head) -->
-                <ellipse cx="200" cy="70" rx="55" ry="65" class="body-part clickable hair-area"
-                         @onclick="() => OpenTagModal(BodyPartType.Hair)" />
-
-                <!-- Ears -->
-                <ellipse cx="155" cy="75" rx="8" ry="15" class="body-part clickable"
-                         @onclick="() => OpenTagModal(BodyPartType.Ears)" />
-                <ellipse cx="245" cy="75" rx="8" ry="15" class="body-part clickable"
-                         @onclick="() => OpenTagModal(BodyPartType.Ears)" />
-
-                <!-- Eyes (larger anime-style) -->
-                <ellipse cx="185" cy="75" rx="12" ry="8" class="body-part clickable"
-                         @onclick="() => OpenTagModal(BodyPartType.Eyes)" />
-                <ellipse cx="215" cy="75" rx="12" ry="8" class="body-part clickable"
-                         @onclick="() => OpenTagModal(BodyPartType.Eyes)" />
-
-                <!-- Face (excluding eyes) -->
-                <path d="M 170 85 Q 200 110 230 85 Q 220 100 200 105 Q 180 100 170 85" class="body-part clickable"
-                      @onclick="() => OpenTagModal(BodyPartType.Face)" />
+                <!-- Head (simplified, single clickable area) -->
+                <circle cx="200" cy="80" r="50" class="body-part clickable head-area"
+                        @onclick="() => OpenTagModal(BodyPartType.Head)" />
 
                 <!-- Neck -->
                 <rect x="190" y="130" width="20" height="25" class="body-part clickable"
@@ -91,6 +72,48 @@
                 <path d="M 240 320 Q 280 350 270 400 Q 260 420 250 400 Q 265 360 240 330" class="body-part clickable tail-area"
                       @onclick="() => OpenTagModal(BodyPartType.Tail)" />
             </svg>
+        </div>
+
+        <!-- Head Details Grid -->
+        <div class="head-detail-container">
+            <h3>Head & Color Details</h3>
+            <div class="head-detail-grid">
+                <!-- Top row - Popular colors -->
+                <div class="detail-section color-section">
+                    <h4>Colors</h4>
+                    <div class="detail-buttons">
+                        <button class="detail-btn hair-color-btn" @onclick="() => OpenTagModal(BodyPartType.HairColor)">
+                            <span class="detail-icon">🎨</span>
+                            <span class="detail-text">Hair Color</span>
+                        </button>
+                        <button class="detail-btn eye-color-btn" @onclick="() => OpenTagModal(BodyPartType.EyeColor)">
+
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Middle row - Facial features -->
+                <div class="detail-section facial-section">
+                    <h4>Facial Features</h4>
+                    <div class="detail-buttons">
+                        <button class="detail-btn hair-btn" @onclick="() => OpenTagModal(BodyPartType.Hair)">
+                            <span class="detail-icon">💇</span>
+                            <span class="detail-text">Hair Style</span>
+                        </button>
+                        <button class="detail-btn eyes-btn" @onclick="() => OpenTagModal(BodyPartType.Eyes)">
+                            <img class="detail-btn-img" />
+                        </button>
+                        <button class="detail-btn face-btn" @onclick="() => OpenTagModal(BodyPartType.Face)">
+                            <span class="detail-icon">😊</span>
+                            <span class="detail-text">Face</span>
+                        </button>
+                        <button class="detail-btn ears-btn" @onclick="() => OpenTagModal(BodyPartType.Ears)">
+                            <span class="detail-icon">👂</span>
+                            <span class="detail-text">Ears</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Selected Tags Panel -->
@@ -145,34 +168,87 @@
 
             <div class="modal-body">
                 <div class="category-tabs">
-                    @foreach (var category in Enum.GetValues<TagCategory>())
+                    @foreach (var category in GetAvailableCategories())
                     {
-                        <button class="tab-btn @(selectedCategory == category ? "active" : "")"
+                        var hasTagPaths = HasTagPathsForCategory(category);
+                        var cssClass = selectedCategory == category ? "active" : "";
+                        if (IsDebugMode && !hasTagPaths)
+                        {
+                            cssClass += " no-tags-configured";
+                        }
+                        <button class="tab-btn @cssClass"
                                 @onclick="() => SelectCategory(category)">
-                            @category
+                            @GetCategoryDisplayName(category)
+                            @if (IsDebugMode && !hasTagPaths)
+                            {
+                                <span class="config-warning">⚠️</span>
+                            }
                         </button>
                     }
                 </div>
+
+@if (IsDebugMode)
+{
+    <div class="admin-controls">
+        <details class="admin-section">
+            <summary>🔧 Admin: Edit Categories & Roots for @selectedBodyPart?.DisplayName</summary>
+            <div class="admin-content">
+                <div class="category-config">
+                    <h4>Category Names for @selectedBodyPart?.DisplayName:</h4>
+                    @if (selectedBodyPart != null && bodyPartCategoryNames.TryGetValue(selectedBodyPart.Type, out var currentBodyPartNames))
+                    {
+                        @foreach (var category in Enum.GetValues<TagCategory>())
+                        {
+                            <div class="category-name-item">
+                                <label>@category:</label>
+                                <input type="text" value="@currentBodyPartNames[category]" @onchange="@(CreateCategoryNameHandler(category))" class="category-input" />
+                            </div>
+                        }
+                    }
+                </div>
+
+                <div class="roots-config">
+                    <h4>@GetCategoryDisplayName(selectedCategory) Tag Paths:</h4>
+                    <div class="root-editor">
+                        @{
+                            var currentRoots = GetCurrentCategoryRoots();
+                        }
+                        @for (int i = 0; i < currentRoots.Count; i++)
+                        {
+                            var index = i;
+                            var root = currentRoots[index];
+                            <div class="root-item">
+                                <input type="text" value="@root" @onchange="@(CreateUpdateHandler(index))" class="root-input" placeholder="e.g., body/anatomy or clothing/tops" />
+                                <button class="remove-root-btn" @onclick="() => RemoveCategoryRoot(root)">×</button>
+                            </div>
+                        }
+                        <div class="add-root">
+                            <input type="text" @bind="newRootName" placeholder="Add new path (e.g., body/anatomy)..." class="root-input" />
+                            <button class="add-root-btn" @onclick="AddCategoryRoot">+ Add</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="admin-actions">
+                    <button class="refresh-btn" @onclick="RefreshCategory">🔄 Refresh</button>
+                    <button class="save-config-btn" @onclick="SaveConfiguration">💾 Save Config</button>
+                </div>
+            </div>
+        </details>
+    </div>
+}
 
                 <div class="search-box">
                     <input type="text" @bind="searchTerm" @oninput="OnSearchInput"
                            placeholder="Search tags..." class="search-input" />
                 </div>
 
-                <div class="available-tags">
-                    @if (filteredTags != null)
+                <div class="available-tags visual-grid">
+                    @if (filteredNodes != null)
                     {
-                        @foreach (var tag in filteredTags)
+                        @foreach (var node in filteredNodes.Take(50))
                         {
-                            var isSelected = selectedBodyPart?.SelectedTags.Contains(tag) == true;
-                            <button class="tag-option @(isSelected ? "selected" : "")"
-                                    @onclick="() => ToggleTag(tag)">
-                                @tag
-                                @if (isSelected)
-                                {
-                                    <span class="checkmark">✓</span>
-                                }
-                            </button>
+                            @RenderVisualTagItem(node)
                         }
                     }
                     else
@@ -190,23 +266,104 @@
     private BodyPart? selectedBodyPart;
     private TagCategory selectedCategory = TagCategory.Body;
     private string searchTerm = "";
-    private List<string>? availableTags;
-    private List<string>? filteredTags;
+    private List<Node>? availableNodes;
+    private List<Node>? filteredNodes;
+    private Dictionary<int, List<Node>> childrenCache = new();
+    private HashSet<int> expandedNodes = new();
+    private Node? currentNode;
     private string generatedPrompt = "";
+
+    // Admin controls (debug mode)
+    private bool IsDebugMode => System.Diagnostics.Debugger.IsAttached;
+    private string newRootName = "";
+    private Dictionary<TagCategory, List<string>> customCategoryRoots = new();
+    private Dictionary<BodyPartType, Dictionary<TagCategory, string>> bodyPartCategoryNames = new();
 
     protected override void OnInitialized()
     {
+        InitializeCategoryNames();
+        LoadExistingConfiguration();
         PromptBuilderService.OnPromptChanged += UpdatePrompt;
         UpdatePrompt();
+    }
+
+    private void LoadExistingConfiguration()
+    {
+        // Configuration is now body-part-specific, so we'll load it when a body part is selected
+        // This method is kept for compatibility but doesn't need to do anything upfront
+    }
+
+    private void LoadConfigurationForCurrentBodyPart()
+    {
+        if (selectedBodyPart == null) return;
+
+        // Clear existing custom category roots for this session
+        customCategoryRoots.Clear();
+
+        // Ensure this body part has category names initialized
+        if (!bodyPartCategoryNames.ContainsKey(selectedBodyPart.Type))
+        {
+            bodyPartCategoryNames[selectedBodyPart.Type] = new Dictionary<TagCategory, string>
+            {
+                { TagCategory.Body, "Anatomy" },
+                { TagCategory.Attire, "Attire" },
+                { TagCategory.BodyAccessories, "Accessories" },
+                { TagCategory.Color, "Color" }
+            };
+        }
+
+        // Load any existing custom category roots from the service for this body part
+        foreach (var category in Enum.GetValues<TagCategory>())
+        {
+            var serviceRoots = PromptBuilderService.GetCurrentCategoryRoots(selectedBodyPart.Type, category);
+            var defaultRoots = PromptBuilderService.GetDefaultCategoryRoots(selectedBodyPart.Type, category);
+
+            // If the service has different roots than defaults, it means there are custom roots
+            if (!serviceRoots.SequenceEqual(defaultRoots))
+            {
+                customCategoryRoots[category] = serviceRoots.ToList();
+            }
+        }
+    }
+
+    private void InitializeCategoryNames()
+    {
+        // Initialize default category names for all body parts
+        var defaultNames = new Dictionary<TagCategory, string>
+        {
+            { TagCategory.Body, "Anatomy" },
+            { TagCategory.Attire, "Attire" },
+            { TagCategory.BodyAccessories, "Accessories" },
+            { TagCategory.Color, "Color" }
+        };
+
+        foreach (var bodyPartType in Enum.GetValues<BodyPartType>())
+        {
+            bodyPartCategoryNames[bodyPartType] = new Dictionary<TagCategory, string>(defaultNames);
+        }
     }
 
 
     private async Task OpenTagModal(BodyPartType bodyPartType)
     {
         selectedBodyPart = PromptBuilderService.GetBodyPart(bodyPartType);
-        selectedCategory = TagCategory.Body;
         searchTerm = "";
         showTagModal = true;
+
+        // Load existing configuration for this body part
+        LoadConfigurationForCurrentBodyPart();
+
+        // Select the first available category for this body part
+        var availableCategories = GetAvailableCategories().ToList();
+        if (availableCategories.Any())
+        {
+            selectedCategory = availableCategories.First();
+        }
+        else
+        {
+            // Fallback to Body category if none are available (shouldn't happen normally)
+            selectedCategory = TagCategory.Body;
+        }
 
         await LoadTagsForCategory();
         StateHasChanged();
@@ -216,10 +373,21 @@
     {
         if (selectedBodyPart == null) return;
 
-        filteredTags = null;
+        filteredNodes = null;
+        expandedNodes.Clear();
         StateHasChanged();
 
-        availableTags = await PromptBuilderService.GetTagsForBodyPart(selectedBodyPart.Type, selectedCategory);
+        availableNodes = await PromptBuilderService.GetTagsForBodyPart(selectedBodyPart.Type, selectedCategory);
+
+        // Auto-expand all top-level roots
+        foreach (var node in availableNodes)
+        {
+            if (!node.IsTag)
+            {
+                expandedNodes.Add(node.Id);
+            }
+        }
+
         ApplySearchFilter();
         StateHasChanged();
     }
@@ -238,21 +406,136 @@
 
     private void ApplySearchFilter()
     {
-        if (availableTags == null)
+        if (availableNodes == null)
         {
-            filteredTags = null;
+            filteredNodes = null;
             return;
         }
 
         if (string.IsNullOrWhiteSpace(searchTerm))
         {
-            filteredTags = availableTags.ToList();
+            filteredNodes = availableNodes.ToList();
         }
         else
         {
-            filteredTags = availableTags
-                .Where(tag => tag.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+            filteredNodes = availableNodes
+                .Where(node => node.Text.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
                 .ToList();
+        }
+    }
+
+    private RenderFragment RenderTagNode(Node node, int depth) => __builder =>
+    {
+        var hasChildren = GetChildren(node.Id).Any();
+        var isExpanded = expandedNodes.Contains(node.Id);
+        var isSelected = selectedBodyPart?.SelectedTags.Contains(node.Text) == true;
+        var childCount = GetChildren(node.Id).Count();
+
+        <div class="tag-node" style="margin-left: @(depth * 20)px;">
+            <div class="tag-node-content">
+                @if (hasChildren)
+                {
+                    <button class="expand-btn @(isExpanded ? "expanded" : "")" @onclick="() => ToggleExpanded(node)">
+                        @(isExpanded ? "▼" : "▶")
+                    </button>
+                }
+                else
+                {
+                    <span class="expand-spacer"></span>
+                }
+
+                <button class="tag-option @(isSelected ? "selected" : "") @(node.IsTag ? "tag-item" : "group-item")"
+                        @onclick="() => OnNodeClick(node)">
+                    @node.Text
+                    @if (!node.IsTag && childCount > 0)
+                    {
+                        <span class="child-count">(@childCount)</span>
+                    }
+                    @if (isSelected && node.IsTag)
+                    {
+                        <span class="checkmark">✓</span>
+                    }
+                </button>
+            </div>
+
+            @if (hasChildren && isExpanded)
+            {
+                <div class="tag-children">
+                    @foreach (var child in GetChildren(node.Id).Take(20))
+                    {
+                        @RenderTagNode(child, depth + 1)
+                    }
+                </div>
+            }
+        </div>
+    };
+
+    private RenderFragment RenderVisualTagItem(Node node) => __builder =>
+    {
+        var isSelected = selectedBodyPart?.SelectedTags.Contains(node.Text) == true;
+        var imagePath = GetTagImagePath(node);
+        var isColorTag = IsColorTagGroup(node);
+
+        <div class="visual-tag-item @(isSelected ? "selected" : "") @(isColorTag ? "color-tag" : "")"
+             @onclick="() => OnTagItemClick(node)">
+            <div class="tag-image-container">
+                @if (isColorTag)
+                {
+                    var colorValue = GetColorFromTag(node.Text);
+                    var isDesaturated = colorValue == "desaturate";
+                    <div class="color-tag-image @(isDesaturated ? "desaturated" : "")" style="background-image: url('@imagePath');" title="@node.Text">
+                        @if (!isDesaturated)
+                        {
+                            <div class="color-overlay" style="background-color: @colorValue;"></div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <img src="@imagePath" alt="@node.Text" class="tag-image" loading="lazy"
+                         onerror="this.src='/img/tagging_sprites/default.jpg'; this.onerror=null;" />
+                }
+            </div>
+            <div class="tag-label">@node.Text</div>
+            @if (isSelected)
+            {
+                <div class="selection-indicator">✓</div>
+            }
+        </div>
+    };
+
+    private List<Node> GetChildren(int nodeId)
+    {
+        if (!childrenCache.TryGetValue(nodeId, out var children))
+        {
+            children = PromptBuilderService.TagGraphService.GetChildren(nodeId).ToList();
+            childrenCache[nodeId] = children;
+        }
+        return children;
+    }
+
+    private void ToggleExpanded(Node node)
+    {
+        if (expandedNodes.Contains(node.Id))
+        {
+            expandedNodes.Remove(node.Id);
+        }
+        else
+        {
+            expandedNodes.Add(node.Id);
+        }
+        StateHasChanged();
+    }
+
+    private void OnNodeClick(Node node)
+    {
+        if (node.IsTag)
+        {
+            ToggleTag(node.Text);
+        }
+        else
+        {
+            ToggleExpanded(node);
         }
     }
 
@@ -302,5 +585,268 @@
     public void Dispose()
     {
         PromptBuilderService.OnPromptChanged -= UpdatePrompt;
+    }
+
+    // Admin methods (runtime debug check)
+    private string GetCategoryDisplayName(TagCategory category)
+    {
+        if (selectedBodyPart != null &&
+            bodyPartCategoryNames.TryGetValue(selectedBodyPart.Type, out var bodyPartNames) &&
+            bodyPartNames.TryGetValue(category, out var name))
+        {
+            return name;
+        }
+        return category.ToString();
+    }
+
+    private List<string> GetCurrentCategoryRoots()
+    {
+        if (customCategoryRoots.TryGetValue(selectedCategory, out var customRoots))
+        {
+            return customRoots;
+        }
+
+        // Return default roots from service for the selected body part
+        if (selectedBodyPart != null)
+        {
+            return PromptBuilderService.GetDefaultCategoryRoots(selectedBodyPart.Type, selectedCategory);
+        }
+        return new List<string>();
+    }
+
+    private EventCallback<ChangeEventArgs> CreateCategoryNameHandler(TagCategory category)
+    {
+        return EventCallback.Factory.Create<ChangeEventArgs>(this, (e) => UpdateCategoryName(category, e.Value?.ToString() ?? ""));
+    }
+
+    private void UpdateCategoryName(TagCategory category, string newName)
+    {
+        if (!string.IsNullOrWhiteSpace(newName) && selectedBodyPart != null)
+        {
+            if (!bodyPartCategoryNames.ContainsKey(selectedBodyPart.Type))
+            {
+                bodyPartCategoryNames[selectedBodyPart.Type] = new Dictionary<TagCategory, string>();
+            }
+
+            bodyPartCategoryNames[selectedBodyPart.Type][category] = newName;
+            StateHasChanged();
+        }
+    }
+
+    private EventCallback<ChangeEventArgs> CreateUpdateHandler(int index)
+    {
+        return EventCallback.Factory.Create<ChangeEventArgs>(this, (e) => UpdateCategoryRoot(index, e.Value?.ToString() ?? ""));
+    }
+
+    private void UpdateCategoryRoot(int index, string newValue)
+    {
+        if (!customCategoryRoots.ContainsKey(selectedCategory))
+        {
+            customCategoryRoots[selectedCategory] = GetCurrentCategoryRoots().ToList();
+        }
+
+        if (index >= 0 && index < customCategoryRoots[selectedCategory].Count)
+        {
+            customCategoryRoots[selectedCategory][index] = newValue;
+
+            // Immediately save the changes to the service for the selected body part
+            if (selectedBodyPart != null)
+            {
+                PromptBuilderService.SetCustomCategoryRoots(selectedBodyPart.Type, selectedCategory, customCategoryRoots[selectedCategory]);
+            }
+
+            StateHasChanged();
+        }
+    }
+
+    private void AddCategoryRoot()
+    {
+        if (!string.IsNullOrWhiteSpace(newRootName))
+        {
+            if (!customCategoryRoots.ContainsKey(selectedCategory))
+            {
+                customCategoryRoots[selectedCategory] = GetCurrentCategoryRoots().ToList();
+            }
+
+            if (!customCategoryRoots[selectedCategory].Contains(newRootName))
+            {
+                customCategoryRoots[selectedCategory].Add(newRootName);
+
+                // Immediately save the changes to the service for the selected body part
+                if (selectedBodyPart != null)
+                {
+                    PromptBuilderService.SetCustomCategoryRoots(selectedBodyPart.Type, selectedCategory, customCategoryRoots[selectedCategory]);
+                }
+            }
+
+            newRootName = "";
+            StateHasChanged();
+        }
+    }
+
+    private void RemoveCategoryRoot(string rootName)
+    {
+        if (!customCategoryRoots.ContainsKey(selectedCategory))
+        {
+            customCategoryRoots[selectedCategory] = GetCurrentCategoryRoots().ToList();
+        }
+
+        if (customCategoryRoots[selectedCategory].Remove(rootName))
+        {
+            // Immediately save the changes to the service for the selected body part
+            if (selectedBodyPart != null)
+            {
+                PromptBuilderService.SetCustomCategoryRoots(selectedBodyPart.Type, selectedCategory, customCategoryRoots[selectedCategory]);
+            }
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task RefreshCategory()
+    {
+        // Set custom roots in service if they exist for the selected body part
+        if (selectedBodyPart != null && customCategoryRoots.TryGetValue(selectedCategory, out var customRoots))
+        {
+            PromptBuilderService.SetCustomCategoryRoots(selectedBodyPart.Type, selectedCategory, customRoots);
+        }
+
+        await LoadTagsForCategory();
+    }
+
+    private async Task SaveConfiguration()
+    {
+        // Save both category names and custom roots for the selected body part
+        if (selectedBodyPart != null)
+        {
+            foreach (var kvp in customCategoryRoots)
+            {
+                PromptBuilderService.SetCustomCategoryRoots(selectedBodyPart.Type, kvp.Key, kvp.Value);
+            }
+        }
+        StateHasChanged();
+    }
+
+    private IEnumerable<TagCategory> GetAvailableCategories()
+    {
+        if (selectedBodyPart == null) return Enum.GetValues<TagCategory>();
+
+        // In debug mode, show all categories so admins can configure missing ones
+        if (IsDebugMode)
+        {
+            return Enum.GetValues<TagCategory>();
+        }
+
+        // In normal mode, only show categories that have tag paths configured
+        return Enum.GetValues<TagCategory>()
+            .Where(category => HasTagPathsForCategory(category));
+    }
+
+    private bool HasTagPathsForCategory(TagCategory category)
+    {
+        if (selectedBodyPart == null) return false;
+
+        var roots = PromptBuilderService.GetCurrentCategoryRoots(selectedBodyPart.Type, category);
+        return roots != null && roots.Count > 0 && roots.Any(r => !string.IsNullOrWhiteSpace(r));
+    }
+
+    private string GetTagImagePath(Node node)
+    {
+        // Build the path based on the tag's hierarchy
+        var breadcrumb = PromptBuilderService.TagGraphService.GetBreadcrumb(node.Id);
+        var pathParts = breadcrumb.Select(n => n.Text.ToLower().Replace(" ", "_")).ToList();
+
+        // For color tags, use the group-specific colorbase.jpg
+        if (IsColorTagGroup(node))
+        {
+            // Remove the actual tag name and replace with colorbase.jpg
+            // e.g., /img/tagging_sprites/head/eyes/eye_color/colorbase.jpg
+            var colorGroupPath = string.Join("/", pathParts.Take(pathParts.Count - 1));
+            return "/img/tagging_sprites/" + colorGroupPath + "/colorbase.jpg";
+        }
+
+        // Create folder structure: /img/tagging_sprites/category1/category2/tag.jpg
+        var imagePath = "/img/tagging_sprites/" + string.Join("/", pathParts) + ".jpg";
+
+        return imagePath;
+    }
+
+    private bool IsColorTagGroup(Node node)
+    {
+        // Check if this node is part of a color-related tag group
+        var breadcrumb = PromptBuilderService.TagGraphService.GetBreadcrumb(node.Id);
+        return breadcrumb.Any(n => n.Text.ToLower().Contains("color") ||
+                                  n.Text.ToLower().Contains("colours") ||
+                                  n.Text.ToLower().Contains("hair_color") ||
+                                  n.Text.ToLower().Contains("eye_color"));
+    }
+
+    private string GetColorFromTag(string tagText)
+    {
+        // Map common color names to CSS colors with hue shift values
+        var colorMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            // Basic colors
+            {"red", "#FF0000"},
+            {"blue", "#0000FF"},
+            {"green", "#00FF00"},
+            {"yellow", "#FFFF00"},
+            {"orange", "#FFA500"},
+            {"purple", "#800080"},
+            {"pink", "#FFC0CB"},
+            {"brown", "#8B4513"},
+            {"black", "#000000"},
+            {"white", "#FFFFFF"},
+            {"grey", "#808080"},
+            {"gray", "#808080"},
+
+            // Hair colors
+            {"blonde", "#F4C2C2"},
+            {"brunette", "#654321"},
+            {"auburn", "#A52A2A"},
+            {"platinum", "#E5E4E2"},
+            {"silver", "#C0C0C0"},
+            {"golden", "#FFD700"},
+
+            // Eye colors
+            {"hazel", "#8E7618"},
+            {"amber", "#FFBF00"},
+            {"emerald", "#50C878"},
+            {"sapphire", "#0F52BA"},
+            {"violet", "#8B00FF"},
+
+            // Fantasy colors
+            {"crimson", "#DC143C"},
+            {"azure", "#007FFF"},
+            {"turquoise", "#40E0D0"},
+            {"magenta", "#FF00FF"},
+            {"cyan", "#00FFFF"},
+            {"lime", "#00FF00"},
+            {"indigo", "#4B0082"},
+            {"coral", "#FF7F50"},
+            {"teal", "#008080"},
+            {"navy", "#000080"}
+        };
+
+        // Try to find a color match in the tag text
+        foreach (var colorName in colorMap.Keys)
+        {
+            if (tagText.ToLower().Contains(colorName.ToLower()))
+            {
+                return colorMap[colorName];
+            }
+        }
+
+        // Return desaturate signal if no color is found
+        return "desaturate";
+    }
+
+    private void OnTagItemClick(Node node)
+    {
+        if (node.IsTag)
+        {
+            ToggleTag(node.Text);
+        }
+        // For non-tag nodes (categories), we might want to drill down or ignore
     }
 }

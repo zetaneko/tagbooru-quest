@@ -83,4 +83,10 @@
         <PackageReference Include="SQLitePCLRaw.bundle_green" Version="2.1.11" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Content Update="wwwroot\img\tagging_sprites\body\eyes\eye color\colorbase.jpg">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </Content>
+    </ItemGroup>
+
 </Project>

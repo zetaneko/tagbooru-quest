@@ -1,11 +1,15 @@
+using TagbooruQuest.Data;
+
 namespace TagbooruQuest.Models;
 
 public enum BodyPartType
 {
     Head,
     Hair,
+    HairColor,
     Ears,
     Eyes,
+    EyeColor,
     Face,
     Neck,
     Shoulders,
@@ -25,14 +29,16 @@ public class BodyPart
     public string Name { get; set; } = "";
     public string DisplayName { get; set; } = "";
     public List<string> SelectedTags { get; set; } = new();
-    public Dictionary<TagCategory, List<string>> AvailableTags { get; set; } = new();
+    public Dictionary<TagCategory, List<Node>> AvailableNodes { get; set; } = new();
+    public Dictionary<TagCategory, int?> CurrentNodeIds { get; set; } = new();
 }
 
 public enum TagCategory
 {
     Body,
     Attire,
-    BodyAccessories
+    BodyAccessories,
+    Color
 }
 
 public class PromptSection

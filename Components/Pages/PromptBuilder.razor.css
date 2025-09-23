@@ -401,3 +401,358 @@
         flex-wrap: wrap;
     }
 }
+
+/* Head Detail Section */
+.head-detail-container {
+    background: linear-gradient(135deg, #f0f8f0, #e8f4e8);
+    border-radius: 12px;
+    padding: 1.5rem;
+    border: 2px solid #d0e7d0;
+    box-shadow: 0 4px 12px rgba(45, 90, 39, 0.1);
+}
+
+.head-detail-container h3 {
+    color: #2d5a27;
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
+    text-align: center;
+}
+
+.head-detail-svg {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+.head-detail {
+    width: 200px;
+    height: 200px;
+    border: 2px solid #d0e7d0;
+    border-radius: 8px;
+    background: white;
+}
+
+.head-outline {
+    fill: none;
+    stroke: #ccc;
+    stroke-width: 1;
+    stroke-dasharray: 3,3;
+}
+
+.hair-detail {
+    fill: #8b4513;
+    stroke: #654321;
+    stroke-width: 1;
+    opacity: 0.7;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.hair-detail:hover {
+    opacity: 1;
+    fill: #a0522d;
+}
+
+.ear-detail {
+    fill: #fdbcb4;
+    stroke: #e6a8a0;
+    stroke-width: 1;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.ear-detail:hover {
+    fill: #ffc0cb;
+}
+
+.eye-detail {
+    fill: #4682b4;
+    stroke: #2e5984;
+    stroke-width: 1;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.eye-detail:hover {
+    fill: #5a9bd4;
+}
+
+.nose-detail, .mouth-detail, .face-detail {
+    fill: #fdbcb4;
+    stroke: #e6a8a0;
+    stroke-width: 1;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.nose-detail:hover, .mouth-detail:hover, .face-detail:hover {
+    fill: #ffc0cb;
+}
+
+.head-labels {
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.head-label {
+    padding: 0.3rem 0.6rem;
+    background: white;
+    border: 1px solid #d0e7d0;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    color: #2d5a27;
+}
+
+/* Hierarchical Tag Browsing */
+.available-tags.hierarchical {
+    display: block;
+    padding: 0;
+}
+
+.tag-node {
+    margin-bottom: 4px;
+}
+
+.tag-node-content {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.expand-btn {
+    background: none;
+    border: none;
+    color: #666;
+    cursor: pointer;
+    padding: 2px 4px;
+    font-size: 0.8rem;
+    width: 20px;
+    text-align: center;
+    border-radius: 3px;
+    transition: all 0.2s ease;
+}
+
+.expand-btn:hover {
+    background: #f0f0f0;
+    color: #333;
+}
+
+.expand-spacer {
+    width: 20px;
+    display: inline-block;
+}
+
+.tag-option.group-item {
+    background: #f8f9fa;
+    border-color: #dee2e6;
+    font-weight: 500;
+}
+
+.tag-option.group-item:hover {
+    background: #e9ecef;
+}
+
+.tag-option.tag-item {
+    background: white;
+    border-color: #d0e7d0;
+}
+
+.tag-option.tag-item:hover {
+    background: #f8fbf8;
+}
+
+.tag-option.tag-item.selected {
+    background: #6b8e66;
+    color: white;
+    border-color: #6b8e66;
+}
+
+.child-count {
+    font-size: 0.8rem;
+    color: #666;
+    margin-left: 4px;
+}
+
+.tag-children {
+    margin-left: 16px;
+    border-left: 1px dashed #ddd;
+    padding-left: 8px;
+}
+
+/* Improved head area styling */
+.head-area {
+    fill: #fdbcb4;
+    stroke: #e6a8a0;
+    stroke-width: 2;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.head-area:hover {
+    fill: #ffc0cb;
+    stroke: #d1939b;
+}
+
+/* Debug Admin Controls */
+.admin-controls {
+    margin: 1rem 0;
+    padding: 0.5rem;
+    border: 2px dashed #ff6b6b;
+    border-radius: 8px;
+    background: #fff5f5;
+}
+
+.admin-section summary {
+    cursor: pointer;
+    font-weight: bold;
+    color: #ff6b6b;
+    padding: 0.5rem;
+}
+
+.admin-section summary:hover {
+    background: #fff0f0;
+    border-radius: 4px;
+}
+
+.admin-content {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: white;
+    border-radius: 6px;
+    border: 1px solid #ffcccc;
+}
+
+.root-editor {
+    margin: 0.5rem 0;
+}
+
+.root-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.root-input {
+    flex: 1;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.remove-root-btn {
+    background: #ff6b6b;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.remove-root-btn:hover {
+    background: #ff5252;
+}
+
+.add-root {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px dashed #ffcccc;
+}
+
+.add-root-btn {
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.add-root-btn:hover {
+    background: #45a049;
+}
+
+.refresh-btn {
+    background: #2196F3;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    margin-top: 1rem;
+}
+
+.refresh-btn:hover {
+    background: #1976D2;
+}
+
+/* Additional Admin Controls */
+.category-config {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 6px;
+}
+
+.category-name-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.category-name-item label {
+    min-width: 120px;
+    font-weight: 500;
+}
+
+.category-input {
+    flex: 1;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.roots-config {
+    margin-bottom: 1.5rem;
+}
+
+.roots-config h4 {
+    color: #333;
+    margin-bottom: 0.5rem;
+}
+
+.admin-actions {
+    display: flex;
+    gap: 0.5rem;
+    padding-top: 1rem;
+    border-top: 1px dashed #ddd;
+}
+
+.save-config-btn {
+    background: #28a745;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.save-config-btn:hover {
+    background: #218838;
+}
