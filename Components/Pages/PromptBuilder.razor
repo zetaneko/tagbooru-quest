@@ -1,0 +1,306 @@
+@page "/prompt-builder"
+@using TagbooruQuest.Models
+@using TagbooruQuest.Services
+@inject PromptBuilderService PromptBuilderService
+@inject IJSRuntime JSRuntime
+@implements IDisposable
+
+<PageTitle>Visual Prompt Builder</PageTitle>
+
+<div class="prompt-builder-container">
+    <div class="header">
+        <h1>Visual Prompt Builder</h1>
+        <p>Click on body parts to add tags and build your prompt</p>
+    </div>
+
+    <div class="main-content">
+        <!-- SVG Figure -->
+        <div class="figure-container">
+            <svg viewBox="0 0 400 600" class="anime-figure">
+                <!-- Head -->
+                <ellipse cx="200" cy="80" rx="45" ry="55" class="body-part clickable"
+                         @onclick="() => OpenTagModal(BodyPartType.Head)" />
+
+                <!-- Hair (larger area around head) -->
+                <ellipse cx="200" cy="70" rx="55" ry="65" class="body-part clickable hair-area"
+                         @onclick="() => OpenTagModal(BodyPartType.Hair)" />
+
+                <!-- Ears -->
+                <ellipse cx="155" cy="75" rx="8" ry="15" class="body-part clickable"
+                         @onclick="() => OpenTagModal(BodyPartType.Ears)" />
+                <ellipse cx="245" cy="75" rx="8" ry="15" class="body-part clickable"
+                         @onclick="() => OpenTagModal(BodyPartType.Ears)" />
+
+                <!-- Eyes (larger anime-style) -->
+                <ellipse cx="185" cy="75" rx="12" ry="8" class="body-part clickable"
+                         @onclick="() => OpenTagModal(BodyPartType.Eyes)" />
+                <ellipse cx="215" cy="75" rx="12" ry="8" class="body-part clickable"
+                         @onclick="() => OpenTagModal(BodyPartType.Eyes)" />
+
+                <!-- Face (excluding eyes) -->
+                <path d="M 170 85 Q 200 110 230 85 Q 220 100 200 105 Q 180 100 170 85" class="body-part clickable"
+                      @onclick="() => OpenTagModal(BodyPartType.Face)" />
+
+                <!-- Neck -->
+                <rect x="190" y="130" width="20" height="25" class="body-part clickable"
+                      @onclick="() => OpenTagModal(BodyPartType.Neck)" />
+
+                <!-- Shoulders -->
+                <ellipse cx="160" cy="170" rx="25" ry="15" class="body-part clickable"
+                         @onclick="() => OpenTagModal(BodyPartType.Shoulders)" />
+                <ellipse cx="240" cy="170" rx="25" ry="15" class="body-part clickable"
+                         @onclick="() => OpenTagModal(BodyPartType.Shoulders)" />
+
+                <!-- Arms -->
+                <ellipse cx="140" cy="220" rx="15" ry="45" class="body-part clickable"
+                         @onclick="() => OpenTagModal(BodyPartType.Arms)" />
+                <ellipse cx="260" cy="220" rx="15" ry="45" class="body-part clickable"
+                         @onclick="() => OpenTagModal(BodyPartType.Arms)" />
+
+                <!-- Hands -->
+                <circle cx="140" cy="280" r="18" class="body-part clickable"
+                        @onclick="() => OpenTagModal(BodyPartType.Hands)" />
+                <circle cx="260" cy="280" r="18" class="body-part clickable"
+                        @onclick="() => OpenTagModal(BodyPartType.Hands)" />
+
+                <!-- Upper Torso -->
+                <ellipse cx="200" cy="200" rx="35" ry="40" class="body-part clickable"
+                         @onclick="() => OpenTagModal(BodyPartType.UpperTorso)" />
+
+                <!-- Lower Torso -->
+                <ellipse cx="200" cy="270" rx="30" ry="35" class="body-part clickable"
+                         @onclick="() => OpenTagModal(BodyPartType.LowerTorso)" />
+
+                <!-- Hips -->
+                <ellipse cx="200" cy="320" rx="35" ry="20" class="body-part clickable"
+                         @onclick="() => OpenTagModal(BodyPartType.Hips)" />
+
+                <!-- Legs -->
+                <ellipse cx="180" cy="420" rx="18" ry="70" class="body-part clickable"
+                         @onclick="() => OpenTagModal(BodyPartType.Legs)" />
+                <ellipse cx="220" cy="420" rx="18" ry="70" class="body-part clickable"
+                         @onclick="() => OpenTagModal(BodyPartType.Legs)" />
+
+                <!-- Feet -->
+                <ellipse cx="180" cy="520" rx="15" ry="25" class="body-part clickable"
+                         @onclick="() => OpenTagModal(BodyPartType.Feet)" />
+                <ellipse cx="220" cy="520" rx="15" ry="25" class="body-part clickable"
+                         @onclick="() => OpenTagModal(BodyPartType.Feet)" />
+
+                <!-- Tail (optional, behind figure) -->
+                <path d="M 240 320 Q 280 350 270 400 Q 260 420 250 400 Q 265 360 240 330" class="body-part clickable tail-area"
+                      @onclick="() => OpenTagModal(BodyPartType.Tail)" />
+            </svg>
+        </div>
+
+        <!-- Selected Tags Panel -->
+        <div class="tags-panel">
+            <h3>Selected Tags</h3>
+            <div class="selected-tags">
+                @foreach (var bodyPart in PromptBuilderService.GetAllBodyParts())
+                {
+                    @if (bodyPart.SelectedTags.Count > 0)
+                    {
+                        <div class="tag-section">
+                            <h4>@bodyPart.DisplayName</h4>
+                            <div class="tags">
+                                @foreach (var tag in bodyPart.SelectedTags)
+                                {
+                                    <span class="tag selected-tag">
+                                        @tag
+                                        <button class="remove-tag" @onclick="() => RemoveTag(bodyPart.Type, tag)">×</button>
+                                    </span>
+                                }
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+
+            <div class="actions">
+                <button class="btn btn-secondary" @onclick="ClearAll">Clear All</button>
+                <button class="btn btn-primary" @onclick="CopyPrompt">Copy Prompt</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Generated Prompt -->
+    <div class="prompt-output">
+        <h3>Generated Prompt</h3>
+        <div class="prompt-text">
+            @generatedPrompt
+        </div>
+    </div>
+</div>
+
+<!-- Tag Selection Modal -->
+@if (showTagModal)
+{
+    <div class="modal-overlay" @onclick="CloseModal">
+        <div class="modal-content" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h3>Select Tags for @selectedBodyPart?.DisplayName</h3>
+                <button class="close-btn" @onclick="CloseModal">×</button>
+            </div>
+
+            <div class="modal-body">
+                <div class="category-tabs">
+                    @foreach (var category in Enum.GetValues<TagCategory>())
+                    {
+                        <button class="tab-btn @(selectedCategory == category ? "active" : "")"
+                                @onclick="() => SelectCategory(category)">
+                            @category
+                        </button>
+                    }
+                </div>
+
+                <div class="search-box">
+                    <input type="text" @bind="searchTerm" @oninput="OnSearchInput"
+                           placeholder="Search tags..." class="search-input" />
+                </div>
+
+                <div class="available-tags">
+                    @if (filteredTags != null)
+                    {
+                        @foreach (var tag in filteredTags)
+                        {
+                            var isSelected = selectedBodyPart?.SelectedTags.Contains(tag) == true;
+                            <button class="tag-option @(isSelected ? "selected" : "")"
+                                    @onclick="() => ToggleTag(tag)">
+                                @tag
+                                @if (isSelected)
+                                {
+                                    <span class="checkmark">✓</span>
+                                }
+                            </button>
+                        }
+                    }
+                    else
+                    {
+                        <div class="loading">Loading tags...</div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool showTagModal = false;
+    private BodyPart? selectedBodyPart;
+    private TagCategory selectedCategory = TagCategory.Body;
+    private string searchTerm = "";
+    private List<string>? availableTags;
+    private List<string>? filteredTags;
+    private string generatedPrompt = "";
+
+    protected override void OnInitialized()
+    {
+        PromptBuilderService.OnPromptChanged += UpdatePrompt;
+        UpdatePrompt();
+    }
+
+
+    private async Task OpenTagModal(BodyPartType bodyPartType)
+    {
+        selectedBodyPart = PromptBuilderService.GetBodyPart(bodyPartType);
+        selectedCategory = TagCategory.Body;
+        searchTerm = "";
+        showTagModal = true;
+
+        await LoadTagsForCategory();
+        StateHasChanged();
+    }
+
+    private async Task LoadTagsForCategory()
+    {
+        if (selectedBodyPart == null) return;
+
+        filteredTags = null;
+        StateHasChanged();
+
+        availableTags = await PromptBuilderService.GetTagsForBodyPart(selectedBodyPart.Type, selectedCategory);
+        ApplySearchFilter();
+        StateHasChanged();
+    }
+
+    private async Task SelectCategory(TagCategory category)
+    {
+        selectedCategory = category;
+        await LoadTagsForCategory();
+    }
+
+    private void OnSearchInput(ChangeEventArgs e)
+    {
+        searchTerm = e.Value?.ToString() ?? "";
+        ApplySearchFilter();
+    }
+
+    private void ApplySearchFilter()
+    {
+        if (availableTags == null)
+        {
+            filteredTags = null;
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            filteredTags = availableTags.ToList();
+        }
+        else
+        {
+            filteredTags = availableTags
+                .Where(tag => tag.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+    }
+
+    private void ToggleTag(string tag)
+    {
+        if (selectedBodyPart == null) return;
+
+        if (selectedBodyPart.SelectedTags.Contains(tag))
+        {
+            PromptBuilderService.RemoveTagFromBodyPart(selectedBodyPart.Type, tag);
+        }
+        else
+        {
+            PromptBuilderService.AddTagToBodyPart(selectedBodyPart.Type, tag);
+        }
+    }
+
+    private void RemoveTag(BodyPartType bodyPart, string tag)
+    {
+        PromptBuilderService.RemoveTagFromBodyPart(bodyPart, tag);
+    }
+
+    private void CloseModal()
+    {
+        showTagModal = false;
+    }
+
+    private void ClearAll()
+    {
+        PromptBuilderService.ClearAllBodyParts();
+    }
+
+    private async Task CopyPrompt()
+    {
+        if (!string.IsNullOrEmpty(generatedPrompt))
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", generatedPrompt);
+        }
+    }
+
+    private void UpdatePrompt()
+    {
+        generatedPrompt = PromptBuilderService.GeneratePrompt();
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        PromptBuilderService.OnPromptChanged -= UpdatePrompt;
+    }
+}

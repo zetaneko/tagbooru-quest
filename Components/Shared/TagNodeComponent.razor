@@ -101,7 +101,8 @@
         {
             try
             {
-                var tagForClipboard = Node.Slug.Replace('_', ' ');
+                // Use Text field if it contains dashes (original formatting), otherwise use slug converted to spaces
+                var tagForClipboard = Node.Text.Contains('-') ? Node.Text : Node.Slug.Replace('_', ' ');
                 await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", tagForClipboard);
 
                 // Call both the old callback for backward compatibility and the new one with message
@@ -198,25 +199,37 @@
         background: none;
         border: none;
         cursor: pointer;
-        font-size: 12px;
-        opacity: 0.7;
-        transition: opacity 0.2s;
-        padding: 2px;
-        border-radius: 3px;
+        font-size: 14px;
+        opacity: 0.4;
+        transition: all 0.2s ease;
+        padding: 4px 6px;
+        border-radius: 4px;
+        min-width: 24px;
+        min-height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .tag-copy-btn:hover, .tag-tree-btn:hover, .tag-danbooru-btn:hover {
         opacity: 1;
-        background: rgba(0, 123, 255, 0.1);
+        background: rgba(0, 123, 255, 0.15);
+        transform: scale(1.05);
     }
 
     .tag-danbooru-btn:hover {
-        background: rgba(255, 152, 0, 0.1);
+        background: rgba(255, 152, 0, 0.15);
     }
 
     .tag-node-content:not(:hover) .tag-copy-btn,
     .tag-node-content:not(:hover) .tag-tree-btn,
     .tag-node-content:not(:hover) .tag-danbooru-btn {
-        opacity: 0.3;
+        opacity: 0.25;
+    }
+
+    .tag-node-content:hover .tag-copy-btn,
+    .tag-node-content:hover .tag-tree-btn,
+    .tag-node-content:hover .tag-danbooru-btn {
+        opacity: 0.7;
     }
 </style>

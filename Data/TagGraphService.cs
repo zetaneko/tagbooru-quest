@@ -263,7 +263,7 @@ LIMIT $lim;";
                     results.Add(ToScored(rd, BestPath(conn, rd.GetInt32(0))));
             }
 
-            // 3) FTS (if table exists)
+            // 3) FTS (if table exists) - escape dashes for FTS queries
             if (TableExists(conn, "node_search"))
             {
                 using var cmd = conn.CreateCommand();
@@ -275,8 +275,10 @@ JOIN node n ON n.id=node_search.rowid
 WHERE node_search MATCH $q
 ORDER BY score
 LIMIT $lim;";
-                cmd.Parameters.AddWithValue("$q", q.ToLowerInvariant());
-                cmd.Parameters.AddWithValue("$lim", limit * 4); // pull more, we’ll merge
+                // For FTS, quote the query to treat it as a phrase and escape special characters
+                var ftsQuery = "\"" + q.ToLowerInvariant().Replace("\"", "\"\"") + "\"";
+                cmd.Parameters.AddWithValue("$q", ftsQuery);
+                cmd.Parameters.AddWithValue("$lim", limit * 4); // pull more, we'll merge
                 using var rd = cmd.ExecuteReader();
                 while (rd.Read())
                     results.Add(ToScored(rd, BestPath(conn, rd.GetInt32(0))));

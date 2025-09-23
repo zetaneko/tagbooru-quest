@@ -426,7 +426,8 @@
     {
         try
         {
-            var tagForClipboard = node.Slug.Replace('_', ' ');
+            // Use Text field if it contains dashes (original formatting), otherwise use slug converted to spaces
+            var tagForClipboard = node.Text.Contains('-') ? node.Text : node.Slug.Replace('_', ' ');
             await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", tagForClipboard);
             ShowToast($"Copied: {tagForClipboard}", "success");
         }
