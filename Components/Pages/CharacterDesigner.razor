@@ -84,7 +84,7 @@
                                                 <!-- Main Tag Tile -->
                                                 <div class="tag-tile @(isSelected ? "selected" : "") @(option.HasChildren ? "has-children" : "")"
                                                      @onclick="() => HandleTagClick(panel, option, sourceKey)">
-                                                    <img src="@option.ImageUrl" alt="@option.Display" class="tile-image" loading="lazy" />
+                                                    <img src="@option.ImageUrl" alt="@option.Display" class="tile-image" loading="lazy" onerror="this.src='img/sprites/others.jpg'" />
                                                     <div class="tile-label">@option.Display</div>
                                                     @if (option.HasChildren)
                                                     {
@@ -107,7 +107,7 @@
 
                                                                 <div class="child-tag-tile @(childSelected ? "selected" : "")"
                                                                      @onclick="() => HandleTagClick(panel, child, sourceKey)">
-                                                                    <img src="@child.ImageUrl" alt="@child.Display" class="child-tile-image" loading="lazy" />
+                                                                    <img src="@child.ImageUrl" alt="@child.Display" class="child-tile-image" loading="lazy" onerror="this.src='img/sprites/others.jpg'" />
                                                                     <div class="child-tile-label">@child.Display</div>
                                                                 </div>
                                                             }
@@ -143,14 +143,14 @@
             }
             @if (allSelections.Any())
             {
-                @foreach (var selection in allSelections)
+                @foreach (var (selection, panelKey) in GetSelectionsWithPanelKeys())
                 {
-                    <div class="prompt-chip">
-                        @if (!string.IsNullOrEmpty(selection.GroupIcon))
-                        {
-                            <span class="chip-icon">@selection.GroupIcon</span>
-                        }
-                        @selection.Display
+                    <div class="prompt-chip" data-panel-key="@panelKey" data-tag="@selection.CanonicalTag"
+                         @onclick="() => NavigateToTag(panelKey, selection.CanonicalTag)">
+                        <img src="@selection.ImageUrl" alt="@selection.Display" class="chip-image" loading="lazy" onerror="this.src='img/sprites/others.jpg'" />
+                        <span class="chip-text">@selection.Display</span>
+                        <button class="chip-remove" @onclick="() => RemoveSelection(panelKey, selection.CanonicalTag)"
+                                @onclick:stopPropagation="true" title="Remove @selection.Display">×</button>
                     </div>
                 }
             }
@@ -393,7 +393,14 @@
             await Task.Delay(50); // Let DOM update completely
             await JSRuntime.InvokeVoidAsync("positionDropdown", $"dropdown-{childrenKey}");
         }
-        // No need to call JavaScript for hiding - CSS handles it with show/hide classes
+        else // Now collapsed
+        {
+            // Explicitly hide the dropdown
+            await JSRuntime.InvokeVoidAsync("hideDropdown", $"dropdown-{childrenKey}");
+        }
+
+        // Let the periodic cleanup handle any edge cases
+        // Removed manual cleanup to prevent interference with reopening
     }
 
     private async Task<List<TagOption>> LoadChildOptions(TagOption parentOption)
@@ -464,19 +471,28 @@
             {
                 if (currentNode == null)
                 {
-                    var searchResults = TagGraphService.Search(dbPath[i], 10);
-                    currentNode = searchResults
+                    var searchResults = TagGraphService.Search(dbPath[i], 100);
+                    var allCandidates = searchResults
                         .Select(r => TagGraphService.GetNodeById(r.Id))
-                        .FirstOrDefault(n => n != null &&
-                                       n.Text.Equals(dbPath[i], StringComparison.OrdinalIgnoreCase));
+                        .Where(n => n != null &&
+                                   n.Text.Equals(dbPath[i], StringComparison.OrdinalIgnoreCase))
+                        .ToList();
+
+                    // ALWAYS prefer nodes that have children over leaf nodes
+                    var nodesWithChildren = allCandidates.Where(c => TagGraphService.GetChildren(c.Id).Any()).ToList();
+                    currentNode = nodesWithChildren.Any() ? nodesWithChildren.First() : allCandidates.FirstOrDefault();
                 }
                 else
                 {
                     var children = TagGraphService.GetChildren(currentNode.Id);
-                    currentNode = children.FirstOrDefault(c =>
+                    var allCandidates = children.Where(c =>
                         c.Text.Equals(dbPath[i], StringComparison.OrdinalIgnoreCase) ||
                         c.Text.Replace(" ", "_").Equals(dbPath[i], StringComparison.OrdinalIgnoreCase) ||
-                        c.Text.Replace("_", " ").Equals(dbPath[i], StringComparison.OrdinalIgnoreCase));
+                        c.Text.Replace("_", " ").Equals(dbPath[i], StringComparison.OrdinalIgnoreCase)).ToList();
+
+                    // ALWAYS prefer nodes that have children over leaf nodes
+                    var nodesWithChildren = allCandidates.Where(c => TagGraphService.GetChildren(c.Id).Any()).ToList();
+                    currentNode = nodesWithChildren.Any() ? nodesWithChildren.First() : allCandidates.FirstOrDefault();
                 }
 
                 if (currentNode == null) break;
@@ -544,5 +560,61 @@
     private void ResetSelections()
     {
         BuildState.Reset();
+    }
+
+    private void RemoveSelection(string panelKey, string canonicalTag)
+    {
+        BuildState.RemoveSelection(panelKey, canonicalTag);
+    }
+
+    private List<(TagOption selection, string panelKey)> GetSelectionsWithPanelKeys()
+    {
+        var result = new List<(TagOption, string)>();
+
+        foreach (var group in DesignerRegistry.Config.Groups)
+        {
+            foreach (var panel in group.Panels)
+            {
+                var selections = BuildState.GetSelections(panel.Key);
+                foreach (var selection in selections)
+                {
+                    result.Add((selection, panel.Key));
+                }
+            }
+        }
+
+        return result.OrderBy(x => GetPanelPromptOrderWeight(x.Item2)).ToList();
+    }
+
+    private int GetPanelPromptOrderWeight(string panelKey)
+    {
+        foreach (var group in DesignerRegistry.Config.Groups)
+        {
+            foreach (var panel in group.Panels)
+            {
+                if (panel.Key == panelKey)
+                    return panel.PromptOrderWeight;
+            }
+        }
+        return 0;
+    }
+
+    private async Task NavigateToTag(string panelKey, string canonicalTag)
+    {
+        // Find the group that contains this panel
+        var targetGroup = DesignerRegistry.Config.Groups
+            .FirstOrDefault(g => g.Panels.Any(p => p.Key == panelKey));
+
+        if (targetGroup != null)
+        {
+            // Switch to the correct group tab
+            SetActiveGroup(targetGroup.Key);
+
+            // Wait for the UI to update
+            await Task.Delay(100);
+
+            // Scroll to the tag (we'll implement this with JavaScript)
+            await JSRuntime.InvokeVoidAsync("scrollToTag", canonicalTag);
+        }
     }
 }

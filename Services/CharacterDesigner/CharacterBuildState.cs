@@ -7,6 +7,7 @@ public interface ICharacterBuildState
 {
     void SetSelection(string panelKey, int promptOrderWeight, Models.CharacterDesigner.SelectionMode mode, IEnumerable<TagOption> options);
     void ToggleSelection(string panelKey, int promptOrderWeight, Models.CharacterDesigner.SelectionMode mode, TagOption option);
+    void RemoveSelection(string panelKey, string canonicalTag);
     List<TagOption> GetSelections(string panelKey);
     List<TagOption> GetAllSelections();
     string BuildPrompt();
@@ -100,6 +101,26 @@ public class CharacterBuildState : ICharacterBuildState
         var allSelections = GetAllSelections();
         var displays = allSelections.Select(o => o.Display).Distinct();
         return string.Join(" ", displays);
+    }
+
+    public void RemoveSelection(string panelKey, string canonicalTag)
+    {
+        if (_selections.TryGetValue(panelKey, out var selection))
+        {
+            var optionToRemove = selection.Options.FirstOrDefault(o => o.CanonicalTag == canonicalTag);
+            if (optionToRemove != null)
+            {
+                selection.Options.Remove(optionToRemove);
+
+                // If this panel has no more selections, remove the entire panel entry
+                if (selection.Options.Count == 0)
+                {
+                    _selections.Remove(panelKey);
+                }
+
+                OnStateChanged?.Invoke();
+            }
+        }
     }
 
     public void Reset()

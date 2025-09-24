@@ -130,21 +130,23 @@ public class DesignerRegistry : IDesignerRegistry
         {
             if (currentNode == null)
             {
-                // Find root node
-                var searchResults = _tagGraphService.Search(path[i], 10);
-                currentNode = searchResults
+                // Find root node - ALWAYS prefer parent nodes over leaf nodes
+                var searchResults = _tagGraphService.Search(path[i], 100);
+                var allCandidates = searchResults
                     .Select(r => _tagGraphService.GetNodeById(r.Id))
-                    .FirstOrDefault(n => n != null &&
-                                   n.Text.Equals(path[i], StringComparison.OrdinalIgnoreCase));
+                    .Where(n => n != null && IsExactMatch(n.Text, path[i]))
+                    .Cast<Node>()
+                    .ToList();
+
+                currentNode = SelectBestCandidate(allCandidates);
             }
             else
             {
-                // Find child node
+                // Find child node - ALWAYS prefer parent nodes over leaf nodes
                 var children = _tagGraphService.GetChildren(currentNode.Id);
-                currentNode = children.FirstOrDefault(c =>
-                    c.Text.Equals(path[i], StringComparison.OrdinalIgnoreCase) ||
-                    c.Text.Replace(" ", "_").Equals(path[i], StringComparison.OrdinalIgnoreCase) ||
-                    c.Text.Replace("_", " ").Equals(path[i], StringComparison.OrdinalIgnoreCase));
+                var allCandidates = children.Where(c => IsExactMatch(c.Text, path[i])).ToList();
+
+                currentNode = SelectBestCandidate(allCandidates);
             }
 
             if (currentNode == null)
@@ -161,6 +163,30 @@ public class DesignerRegistry : IDesignerRegistry
         }
 
         return results;
+    }
+
+
+    private bool IsExactMatch(string nodeText, string searchTerm)
+    {
+        return nodeText.Equals(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+               nodeText.Replace(" ", "_").Equals(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+               nodeText.Replace("_", " ").Equals(searchTerm, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private Node? SelectBestCandidate(List<Node> candidates)
+    {
+        if (!candidates.Any()) return null;
+        if (candidates.Count == 1) return candidates[0];
+
+        // ALWAYS prefer nodes that have children over leaf nodes
+        var nodesWithChildren = candidates.Where(c => _tagGraphService.GetChildren(c.Id).Any()).ToList();
+        if (nodesWithChildren.Any())
+        {
+            return nodesWithChildren.First(); // Return the first node that has children
+        }
+
+        // Only return leaf nodes if no parent nodes exist
+        return candidates.First();
     }
 
     private DesignerConfig CreateDefaultConfiguration()

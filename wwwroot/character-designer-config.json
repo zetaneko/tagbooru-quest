@@ -1,15 +1,105 @@
 {
   "groups": [
     {
+      "key": "body",
+      "title": "Body",
+      "icon": "",
+      "backgroundImage": "/img/tabs/body-bg.jpg",
+      "panels": [
+        {
+          "key": "gender_tone",
+          "title": "Gender & Tone",
+          "selectionMode": "Multi",
+          "promptOrderWeight": 20,
+          "sources": [
+            {
+              "type": "DbQuery",
+              "title": "Gender",
+              "dbPath": [ "Body", "Gender" ],
+              "expandedByDefault": true
+            },
+            {
+              "type": "DbQuery",
+              "title": "Normal Skin Colors",
+              "dbPath": [ "Body", "Skin Color", "Normal Colors" ],
+              "expandedByDefault": true
+            },
+            {
+              "type": "DbQuery",
+              "title": "Abnormal Skin Colors",
+              "dbPath": [ "Body", "Skin Color", "Abnormal Colors" ],
+              "expandedByDefault": false
+            },
+            {
+              "type": "DbQuery",
+              "title": "Special Skin Detail",
+              "dbPath": [ "Body", "Skin Color", "Other" ],
+              "expandedByDefault": false
+            },
+            {
+              "type": "DbQuery",
+              "title": "Material Skin Detail",
+              "dbPath": [ "Body", "Skin Color", "Colors By Material" ],
+              "expandedByDefault": false
+            }
+          ]
+        },
+        {
+          "key": "bodydetail",
+          "title": "Body Detail",
+          "selectionMode": "Multi",
+          "promptOrderWeight": 21,
+          "sources": [
+            {
+              "type": "DbQuery",
+              "title": "Body types",
+              "dbPath": [ "Sex", "Sex acts", "fetishes", "Body types" ],
+              "expandedByDefault": true
+            },
+            {
+              "type": "DbQuery",
+              "title": "Arms",
+              "dbPath": [ "Body", "Appendages", "Arms" ],
+              "expandedByDefault": false
+            },
+            {
+              "type": "DbQuery",
+              "title": "Thighs",
+              "dbPath": [ "Body", "Appendages", "Thighs" ],
+              "expandedByDefault": false
+            },
+            {
+              "type": "DbQuery",
+              "title": "Legs",
+              "dbPath": [ "Body", "Appendages", "Legs" ],
+              "expandedByDefault": false
+            },
+            {
+              "type": "DbQuery",
+              "title": "Feet",
+              "dbPath": [ "Body", "Appendages", "Feet" ],
+              "expandedByDefault": false
+            },
+            {
+              "type": "DbQuery",
+              "title": "Joints",
+              "dbPath": [ "Body", "Appendages", "Joins" ],
+              "expandedByDefault": false
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "hair",
       "title": "Hair",
-      "icon": "💇",
+      "icon": "",
       "backgroundImage": "/img/tabs/hair-bg.jpg",
       "panels": [
         {
           "key": "hair_color",
-          "title": "Hair Color",
-          "selectionMode": "Single",
+          "title": "Hair Color & Texture",
+          "selectionMode": "Multi",
           "promptOrderWeight": 20,
           "sources": [
             {
@@ -23,26 +113,142 @@
               "title": "Multiple Colors",
               "dbPath": [ "Body", "Hair", "Hair Color", "Multiple colors" ],
               "expandedByDefault": false
+            },
+            {
+              "type": "DbQuery",
+              "title": "Hair Texture",
+              "dbPath": [ "Body", "Hair", "Hair Styles", "Hair Texture" ],
+              "expandedByDefault": false
+            },
+            {
+              "type": "DbQuery",
+              "title": "Misc",
+              "dbPath": [ "Body", "Hair", "Hair Color", "Misc" ],
+              "expandedByDefault": false
             }
           ]
         },
         {
           "key": "hairstyle",
           "title": "Hairstyle",
-          "selectionMode": "Single",
+          "selectionMode": "Multi",
           "promptOrderWeight": 21,
           "sources": [
             {
               "type": "DbQuery",
               "title": "Hair Length",
-              "dbPath": ["Body", "Hair", "Hair Length"],
+              "dbPath": [ "Body", "Hair", "Hair Styles", "Length And Volume" ],
               "expandedByDefault": true
             },
             {
               "type": "DbQuery",
-              "title": "Hair Styling",
-              "dbPath": ["Body", "Hair", "Hair Styling"],
+              "title": "Tied Hair Styles",
+              "dbPath": [ "Body", "Hair", "Hair Styles", "Tied Hair" ],
               "expandedByDefault": false
+            },
+            {
+              "type": "DbQuery",
+              "title": "Long Hair Styles",
+              "dbPath": [ "Body", "Hair", "Hair Styles", "Long Hair" ],
+              "expandedByDefault": false
+            },
+            {
+              "type": "DbQuery",
+              "title": "Medium Hair Styles",
+              "dbPath": [ "Body", "Hair", "Hair Styles", "Medium Hair" ],
+              "expandedByDefault": false
+            },
+            {
+              "type": "DbQuery",
+              "title": "Short Hair Styles",
+              "dbPath": [ "Body", "Hair", "Hair Styles", "Short Hair" ],
+              "expandedByDefault": false
+            },
+            {
+              "type": "DbQuery",
+              "title": "Very Short Hair Styles",
+              "dbPath": [ "Body", "Hair", "Hair Styles", "Very Short Hair" ],
+              "expandedByDefault": false
+            },
+            {
+              "type": "DbQuery",
+              "title": "Tall Hair Styles",
+              "dbPath": [ "Body", "Hair", "Hair Styles", "Tall Hair" ],
+              "expandedByDefault": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "hair_more",
+      "title": "Hair - Other",
+      "icon": "",
+      "backgroundImage": "/img/tabs/hair-more-bg.jpg",
+      "panels": [
+        {
+          "key": "Miscellaneous",
+          "title": "Miscellaneous",
+          "selectionMode": "Multi",
+          "promptOrderWeight": 30,
+          "sources": [
+            {
+              "type": "DbQuery",
+              "title": "Expressive",
+              "dbPath": [ "Body", "Hair", "Miscellaneous" ],
+              "expandedByDefault": true
+            },
+            {
+              "type": "DbQuery",
+              "title": "Miscellaneous",
+              "dbPath": [ "Body", "Hair", "Misc" ],
+              "expandedByDefault": false
+            },
+            {
+              "type": "DbQuery",
+              "title": "Fantasy",
+              "dbPath": [ "Body", "Hair", "Fantasy" ],
+              "expandedByDefault": false
+            }
+          ]
+        },
+        {
+          "key": "segmented_hair_styles",
+          "title": "Segemented Hair Styles",
+          "selectionMode": "Multi",
+          "promptOrderWeight": 30,
+          "sources": [
+            {
+              "type": "DbQuery",
+              "title": "Top",
+              "dbPath": [ "Body", "Hair", "Top Of The Head" ],
+              "expandedByDefault": true
+            },
+            {
+              "type": "DbQuery",
+              "title": "Front",
+              "dbPath": [ "Body", "Hair", "Front Of The Head" ],
+              "expandedByDefault": false
+            },
+            {
+              "type": "DbQuery",
+              "title": "Back",
+              "dbPath": [ "Body", "Hair", "Back Of The Head" ],
+              "expandedByDefault": false
+            }
+          ]
+        },
+        {
+          "key": "facial_hair",
+          "title": "Facial Hair",
+          "selectionMode": "Multi",
+          "promptOrderWeight": 30,
+          "sources": [
+            {
+              "type": "DbQuery",
+              "title": "All",
+              "dbPath": [ "Body", "Hair", "Facial Hair" ],
+              "expandedByDefault": true
             }
           ]
         }
@@ -51,20 +257,150 @@
     {
       "key": "eyes",
       "title": "Eyes",
-      "icon": "👀",
+      "icon": "",
       "backgroundImage": "/img/tabs/eyes-bg.jpg",
       "panels": [
         {
           "key": "eye_color",
-          "title": "Eye Color",
-          "selectionMode": "Single",
+          "title": "Eye Colors",
+          "selectionMode": "Multi",
           "promptOrderWeight": 30,
           "sources": [
             {
               "type": "DbQuery",
               "title": "Eye Colors",
-              "dbPath": ["Body", "Eyes", "Eye color"],
+              "dbPath": [ "Body", "Eyes", "Eye color" ],
               "expandedByDefault": true
+            },
+            {
+              "type": "DbQuery",
+              "title": "Sclera Colors",
+              "dbPath": [ "Body", "Eyes", "Sclera Color" ],
+              "expandedByDefault": false
+            },
+            {
+              "type": "DbQuery",
+              "title": "Pupil Colors",
+              "dbPath": [ "Body", "Eyes", "Pupil Colors" ],
+              "expandedByDefault": false
+            }
+          ]
+        },
+        {
+          "key": "eye_color",
+          "title": "Eye Form",
+          "selectionMode": "Multi",
+          "promptOrderWeight": 30,
+          "sources": [
+            {
+              "type": "DbQuery",
+              "title": "Iris Form",
+              "dbPath": [ "Body", "Eyes", "Iris Form" ],
+              "expandedByDefault": true
+            },
+            {
+              "type": "DbQuery",
+              "title": "Pupil Form",
+              "dbPath": [ "Body", "Eyes", "Pupil Form" ],
+              "expandedByDefault": false
+            },
+            {
+              "type": "DbQuery",
+              "title": "Emotions And Expressions",
+              "dbPath": [ "Body", "Eyes", "Emotions And Expressions" ],
+              "expandedByDefault": false
+            },
+            {
+              "type": "DbQuery",
+              "title": "Eye Area",
+              "dbPath": [ "Body", "Eyes", "Eye Area" ],
+              "expandedByDefault": false
+            },
+            {
+              "type": "DbQuery",
+              "title": "Special Eye Appearances",
+              "dbPath": [ "Body", "Eyes", "Special Eye Appearances" ],
+              "expandedByDefault": false
+            },
+            {
+              "type": "DbQuery",
+              "title": "Miscellaneous",
+              "dbPath": [ "Body", "Eyes", "Misc / Actions" ],
+              "expandedByDefault": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "head",
+      "title": "Head",
+      "icon": "",
+      "backgroundImage": "/img/tabs/head-bg.jpg",
+      "panels": [
+        {
+          "key": "lowerhead",
+          "title": "Lower Head",
+          "selectionMode": "Multi",
+          "promptOrderWeight": 40,
+          "sources": [
+            {
+              "type": "DbQuery",
+              "title": "Mouth",
+              "dbPath": [ "Body", "Face", "Drawing Styles", "Mouth" ],
+              "expandedByDefault": true
+            },
+            {
+              "type": "DbQuery",
+              "title": "Tongue",
+              "dbPath": [ "Body", "Head", "Tongue" ],
+              "expandedByDefault": false
+            },
+            {
+              "type": "DbQuery",
+              "title": "Neck",
+              "dbPath": [ "Body", "Neck", "Anatomy" ],
+              "expandedByDefault": false
+            }
+          ]
+        },
+        {
+          "key": "upperhead",
+          "title": "Upper Head",
+          "selectionMode": "Multi",
+          "promptOrderWeight": 40,
+          "sources": [
+            {
+              "type": "DbQuery",
+              "title": "Eyebrows",
+              "dbPath": [ "Body", "Head", "Eyebrows", "Sizes And Shapes" ],
+              "expandedByDefault": true
+            },
+            {
+              "type": "DbQuery",
+              "title": "Eyelashes",
+              "dbPath": [ "Body", "Head", "Eyelashes" ],
+              "expandedByDefault": false
+            }
+          ]
+        },
+        {
+          "key": "upperhead",
+          "title": "Ears",
+          "selectionMode": "Multi",
+          "promptOrderWeight": 40,
+          "sources": [
+            {
+              "type": "DbQuery",
+              "title": "Animal Ears",
+              "dbPath": [ "Body", "Head", "Ears", "Animal Ears" ],
+              "expandedByDefault": true
+            },
+            {
+              "type": "DbQuery",
+              "title": "Other Ears",
+              "dbPath": [ "Body", "Head", "Ears", "Other Ears" ],
+              "expandedByDefault": false
             }
           ]
         }
@@ -73,19 +409,19 @@
     {
       "key": "expression",
       "title": "Expression",
-      "icon": "😊",
+      "icon": "",
       "backgroundImage": "/img/tabs/expression-bg.jpg",
       "panels": [
         {
           "key": "facial_expression",
           "title": "Facial Expression",
-          "selectionMode": "Single",
+          "selectionMode": "Multi",
           "promptOrderWeight": 40,
           "sources": [
             {
               "type": "DbQuery",
               "title": "Facial Emotions",
-              "dbPath": ["Body", "Face", "Emotions"],
+              "dbPath": [ "Body", "Face", "Emotions" ],
               "expandedByDefault": true
             }
           ]

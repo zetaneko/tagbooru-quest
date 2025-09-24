@@ -45,22 +45,46 @@ window.positionDropdown = (dropdownId) => {
         return;
     }
 
-    // Find the parent tag tile by looking for the tile that contains the dropdown
-    const tagContainer = dropdown.closest('.tag-item-container');
-    if (!tagContainer) {
-        console.log('Tag container not found for:', dropdownId);
-        return;
+    // Clear any previous hiding state and reset all properties
+    dropdown.classList.remove('hide');
+    dropdown.classList.add('show');
+    dropdown.style.visibility = '';  // Reset to default
+    dropdown.style.opacity = '';      // Reset to default
+
+    // Find or retrieve the parent tag tile reference
+    let tagContainer, tagTile;
+
+    // If dropdown is already in document.body, use stored references
+    if (dropdown.parentNode === document.body && dropdown.dataset.originalTagId) {
+        tagTile = document.getElementById(dropdown.dataset.originalTagId);
+        if (tagTile) {
+            tagContainer = tagTile.closest('.tag-item-container');
+        }
+    } else {
+        // Find the parent tag tile by looking for the tile that contains the dropdown
+        tagContainer = dropdown.closest('.tag-item-container');
+        if (tagContainer) {
+            tagTile = tagContainer.querySelector('.tag-tile');
+        }
     }
 
-    const tagTile = tagContainer.querySelector('.tag-tile');
-    if (!tagTile) {
-        console.log('Tag tile not found for:', dropdownId);
+    if (!tagContainer || !tagTile) {
+        console.log('Tag container or tile not found for:', dropdownId);
         return;
     }
 
     // Move dropdown to document body to escape all container clipping
     if (dropdown.parentNode !== document.body) {
-        console.log('Moving dropdown to document body');
+        // Store reference to original tag tile before moving
+        if (tagTile.id) {
+            dropdown.dataset.originalTagId = tagTile.id;
+        } else {
+            // Create an ID if it doesn't exist
+            tagTile.id = 'tag-tile-' + Math.random().toString(36).substr(2, 9);
+            dropdown.dataset.originalTagId = tagTile.id;
+        }
+
+        console.log('Moving dropdown to document body, storing tag reference:', tagTile.id);
         document.body.appendChild(dropdown);
     }
 
@@ -111,7 +135,11 @@ window.positionDropdown = (dropdownId) => {
     dropdown.style.left = left + 'px';
     dropdown.style.top = top + 'px';
     dropdown.style.visibility = 'visible';
-    dropdown.style.opacity = '';
+    dropdown.style.opacity = '1';
+    dropdown.style.pointerEvents = 'auto'; // Re-enable pointer events when showing
+    dropdown.style.zIndex = '999999'; // Ensure it's above everything
+
+    console.log('Positioned and shown dropdown:', dropdownId, 'classes:', dropdown.className);
 
     console.log('Final positioned dropdown:', dropdownId, 'at', left, top);
     console.log('Tile absolute position:', tileRect.left + scrollLeft, tileRect.bottom + scrollTop);
@@ -123,6 +151,11 @@ window.positionDropdown = (dropdownId) => {
             if (!dropdown.contains(event.target) && !tagTile.contains(event.target)) {
                 dropdown.classList.remove('show');
                 dropdown.classList.add('hide');
+
+                // Move dropdown off-screen and disable pointer events
+                dropdown.style.top = '-9999px';
+                dropdown.style.left = '-9999px';
+                dropdown.style.pointerEvents = 'none';
 
                 // Notify Blazor about the state change
                 const dropdownIdParts = dropdownId.split('dropdown-')[1];
@@ -144,9 +177,19 @@ window.positionDropdown = (dropdownId) => {
 window.hideDropdown = (dropdownId) => {
     const dropdown = document.getElementById(dropdownId);
     if (dropdown) {
+        console.log('Hiding dropdown:', dropdownId, 'current classes:', dropdown.className);
+
         dropdown.classList.remove('show');
         dropdown.classList.add('hide');
-        console.log('Hidden dropdown:', dropdownId);
+
+        // Move dropdown off-screen and disable pointer events
+        dropdown.style.top = '-9999px';
+        dropdown.style.left = '-9999px';
+        dropdown.style.pointerEvents = 'none';
+        dropdown.style.visibility = 'hidden';
+        dropdown.style.opacity = '0';
+
+        console.log('Hidden dropdown:', dropdownId, 'new classes:', dropdown.className);
     }
 };
 
@@ -176,4 +219,105 @@ window.setupDropdownCallbacks = (dotNetRef) => {
         dotNetRef.invokeMethodAsync('OnDropdownClosed', childrenKey);
     };
     window.characterDesignerRef = dotNetRef;
+
+    // Periodic cleanup disabled to prevent interference with reopening
+    // startDropdownCleanup();
+};
+
+// Global function to ensure all hidden dropdowns are properly disabled
+window.cleanupHiddenDropdowns = () => {
+    const allDropdowns = document.querySelectorAll('.children-dropdown');
+    allDropdowns.forEach(dropdown => {
+        // Only cleanup dropdowns that are stuck visible but should be hidden
+        // Check if dropdown is visible but not intentionally shown
+        const isVisible = dropdown.style.visibility !== 'hidden' &&
+                          dropdown.style.opacity !== '0' &&
+                          dropdown.style.top !== '-9999px';
+        const isIntentionallyShown = dropdown.classList.contains('show');
+
+        // Only intervene if dropdown is visible but not intentionally shown
+        if (isVisible && !isIntentionallyShown && dropdown.classList.contains('hide')) {
+            // Force disable interaction for stuck dropdowns only
+            dropdown.style.pointerEvents = 'none';
+            dropdown.style.top = '-9999px';
+            dropdown.style.left = '-9999px';
+            dropdown.style.visibility = 'hidden';
+            dropdown.style.opacity = '0';
+
+            console.log('Cleaned up stuck visible dropdown:', dropdown.id);
+        }
+    });
+};
+
+// Start periodic cleanup (runs every 10 seconds to catch any edge cases without interfering)
+window.startDropdownCleanup = () => {
+    if (window.dropdownCleanupInterval) {
+        clearInterval(window.dropdownCleanupInterval);
+    }
+
+    window.dropdownCleanupInterval = setInterval(() => {
+        window.cleanupHiddenDropdowns();
+    }, 10000);
+};
+
+// Stop cleanup when page unloads
+window.addEventListener('beforeunload', () => {
+    if (window.dropdownCleanupInterval) {
+        clearInterval(window.dropdownCleanupInterval);
+    }
+});
+
+// Scroll to and highlight a specific tag
+window.scrollToTag = (canonicalTag) => {
+    console.log('Scrolling to tag:', canonicalTag);
+
+    // Find all tag tiles that match the canonical tag
+    const tagTiles = document.querySelectorAll('.tag-tile, .child-tag-tile');
+    let targetTile = null;
+
+    tagTiles.forEach(tile => {
+        // Check if this tile contains the target tag
+        // We'll look for data attributes or match against the tile's display text
+        const tileImage = tile.querySelector('img');
+        if (tileImage) {
+            const altText = tileImage.getAttribute('alt');
+            const displayName = canonicalTag.replace(/_/g, ' '); // Convert underscores to spaces
+
+            if (altText && (altText.toLowerCase() === displayName.toLowerCase() ||
+                           altText.toLowerCase() === canonicalTag.toLowerCase())) {
+                targetTile = tile;
+            }
+        }
+    });
+
+    if (targetTile) {
+        // Scroll to the tile with smooth animation
+        targetTile.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+            inline: 'nearest'
+        });
+
+        // Add a highlight effect
+        targetTile.classList.add('highlight-target');
+        setTimeout(() => {
+            if (targetTile.classList) {
+                targetTile.classList.remove('highlight-target');
+            }
+        }, 3000);
+
+        console.log('Found and scrolled to tag tile:', targetTile);
+    } else {
+        console.log('Tag tile not found for:', canonicalTag);
+
+        // If not found in visible tiles, it might be in a collapsed section
+        // Try to expand sections that might contain it
+        const expandBtns = document.querySelectorAll('.expand-btn:not(.expanded)');
+        expandBtns.forEach(btn => btn.click());
+
+        // Try again after a delay to let sections expand
+        setTimeout(() => {
+            window.scrollToTag(canonicalTag);
+        }, 500);
+    }
 };
