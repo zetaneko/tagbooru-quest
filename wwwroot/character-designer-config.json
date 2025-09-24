@@ -14,12 +14,14 @@
             {
               "type": "DbQuery",
               "title": "Specific Colors",
-              "dbPath": [ "Body", "Hair", "Hair Color", "Specific colors" ]
+              "dbPath": [ "Body", "Hair", "Hair Color", "Specific colors" ],
+              "expandedByDefault": true
             },
             {
               "type": "DbQuery",
               "title": "Multiple Colors",
-              "dbPath": [ "Body", "Hair", "Hair Color", "Multiple colors" ]
+              "dbPath": [ "Body", "Hair", "Hair Color", "Multiple colors" ],
+              "expandedByDefault": false
             }
           ]
         },
@@ -32,12 +34,14 @@
             {
               "type": "DbQuery",
               "title": "Hair Length",
-              "dbPath": ["Body", "Hair", "Hair Length"]
+              "dbPath": ["Body", "Hair", "Hair Length"],
+              "expandedByDefault": true
             },
             {
               "type": "DbQuery",
               "title": "Hair Styling",
-              "dbPath": ["Body", "Hair", "Hair Styling"]
+              "dbPath": ["Body", "Hair", "Hair Styling"],
+              "expandedByDefault": false
             }
           ]
         }
@@ -57,7 +61,8 @@
             {
               "type": "DbQuery",
               "title": "Eye Colors",
-              "dbPath": ["Body", "Eyes", "Eye color"]
+              "dbPath": ["Body", "Eyes", "Eye color"],
+              "expandedByDefault": true
             }
           ]
         }
@@ -77,7 +82,8 @@
             {
               "type": "DbQuery",
               "title": "Facial Emotions",
-              "dbPath": ["Body", "Face", "Emotions"]
+              "dbPath": ["Body", "Face", "Emotions"],
+              "expandedByDefault": true
             }
           ]
         }

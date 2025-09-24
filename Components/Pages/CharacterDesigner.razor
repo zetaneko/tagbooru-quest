@@ -54,14 +54,13 @@
 
                         <div class="source-section">
                             <div class="source-header">
-                                <h4 class="source-title">@(source.Title ?? "Options")</h4>
+                                <h4 class="source-title" @onclick="() => ToggleSourceExpanded(panel.Key, source)">@(source.Title ?? "Options")</h4>
                                 <div class="source-controls">
                                     <button class="multi-select-toggle @(IsMultiSelectMode(sourceKey) ? "active" : "")"
                                             @onclick="() => ToggleMultiSelectMode(sourceKey)">
                                         Multi
                                     </button>
-                                    <button class="expand-btn" @onclick="() => ToggleSourceExpanded(panel.Key, source)">
-                                        @(isExpanded ? "▼" : "▶")
+                                    <button class="expand-btn @(isExpanded ? "expanded" : "")" @onclick="() => ToggleSourceExpanded(panel.Key, source)">
                                     </button>
                                 </div>
                             </div>
@@ -179,6 +178,9 @@
         activeGroup = DesignerRegistry.GetGroup(activeGroupKey);
         BuildState.OnStateChanged += StateHasChanged;
 
+        // Initialize default expansion states from configuration
+        InitializeDefaultExpansionStates();
+
         // Validate configuration in background
         _ = Task.Run(async () =>
         {
@@ -214,6 +216,36 @@
     public void Dispose()
     {
         BuildState.OnStateChanged -= StateHasChanged;
+    }
+
+    private void InitializeDefaultExpansionStates()
+    {
+        foreach (var group in DesignerRegistry.Config.Groups)
+        {
+            foreach (var panel in group.Panels)
+            {
+                if (!expandedSources.ContainsKey(panel.Key))
+                    expandedSources[panel.Key] = new Dictionary<SourceConfig, bool>();
+
+                foreach (var source in panel.Sources)
+                {
+                    expandedSources[panel.Key][source] = source.ExpandedByDefault;
+
+                    // Pre-load options for expanded sources
+                    if (source.ExpandedByDefault)
+                    {
+                        _ = LoadSourceOptionsAndNotify(panel.Key, source);
+                    }
+                }
+            }
+        }
+    }
+
+    private async Task LoadSourceOptionsAndNotify(string panelKey, SourceConfig source)
+    {
+        await LoadSourceOptions(panelKey, source);
+        // Notify the UI that loading is complete
+        await InvokeAsync(StateHasChanged);
     }
 
     [JSInvokable]

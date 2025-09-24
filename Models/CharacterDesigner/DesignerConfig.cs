@@ -30,6 +30,7 @@ public class SourceConfig
     public List<string>? DbPath { get; set; }
     public string? FileGlob { get; set; }
     public string? Title { get; set; } // Display title for the source row
+    public bool ExpandedByDefault { get; set; } = false; // Whether the source should be expanded by default
 }
 
 public enum SelectionMode
