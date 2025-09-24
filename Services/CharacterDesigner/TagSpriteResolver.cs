@@ -5,6 +5,7 @@ namespace TagbooruQuest.Services.CharacterDesigner;
 public interface ITagSpriteResolver
 {
     TagOption ResolveTag(string canonicalTag);
+    TagOption ResolveTag(string canonicalTag, int? nodeId = null, bool hasChildren = false, string? groupIcon = null);
     Task<List<TagOption>> DiscoverByFileGlobAsync(string globPattern);
     string GetImageUrl(string displayName);
     string CanonicalToDisplay(string canonicalTag);
@@ -47,6 +48,11 @@ public class TagSpriteResolver : ITagSpriteResolver
 
     public TagOption ResolveTag(string canonicalTag)
     {
+        return ResolveTag(canonicalTag, null, false, null);
+    }
+
+    public TagOption ResolveTag(string canonicalTag, int? nodeId = null, bool hasChildren = false, string? groupIcon = null)
+    {
         var display = CanonicalToDisplay(canonicalTag);
         var imageUrl = GetImageUrl(display);
 
@@ -54,7 +60,10 @@ public class TagSpriteResolver : ITagSpriteResolver
         {
             CanonicalTag = canonicalTag,
             Display = display,
-            ImageUrl = imageUrl
+            ImageUrl = imageUrl,
+            NodeId = nodeId,
+            HasChildren = hasChildren,
+            GroupIcon = groupIcon
         };
     }
 

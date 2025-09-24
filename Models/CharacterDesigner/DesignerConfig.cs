@@ -49,4 +49,7 @@ public class TagOption
     public string Display { get; set; } = string.Empty;
     public string ImageUrl { get; set; } = string.Empty;
     public string CanonicalTag { get; set; } = string.Empty;
+    public bool HasChildren { get; set; } = false;
+    public int? NodeId { get; set; } // For database navigation
+    public string? GroupIcon { get; set; } // Icon from the parent group
 }

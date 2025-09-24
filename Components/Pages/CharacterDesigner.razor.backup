@@ -7,116 +7,151 @@
 @inject ICharacterBuildState BuildState
 @inject TagbooruQuest.Data.TagGraphService TagGraphService
 @inject IJSRuntime JSRuntime
-@implements IDisposable
 
-<PageTitle>Character Designer</PageTitle>
-
-<div class="character-builder">
-    <!-- Header with Title and Stats -->
-    <div class="builder-header">
-        <h1 class="builder-title">⚔️ Character Builder</h1>
-        <div class="character-stats">
-            <span class="stat-icon">🎯</span>
-            <span class="stat-value">@BuildState.GetAllSelections().Count</span>
-        </div>
-    </div>
-
-    <!-- Category Tabs -->
-    <div class="category-tabs">
+<div class="character-designer">
+    <!-- Group Tabs -->
+    <div class="group-tabs">
         @foreach (var group in DesignerRegistry.Config.Groups)
         {
-            var selectionCount = GetGroupSelectionCount(group.Key);
-            <button class="category-tab @(activeGroupKey == group.Key ? "active" : "")"
+            <button class="group-tab @(activeGroupKey == group.Key ? "active" : "")"
                     @onclick="() => SetActiveGroup(group.Key)">
-                <div class="tab-icon">@group.Icon</div>
-                <div class="tab-title">@group.Title</div>
-                @if (selectionCount > 0)
+                @if (!string.IsNullOrEmpty(group.Icon))
                 {
-                    <div class="selection-badge">@selectionCount</div>
+                    <span class="group-icon">@group.Icon</span>
                 }
+                <span class="group-title">@group.Title</span>
             </button>
         }
     </div>
 
-    <!-- Builder Content -->
-    <div class="builder-content">
+    <!-- Panel Host -->
+    <div class="panel-host">
         @if (activeGroup != null)
         {
             @foreach (var panel in activeGroup.Panels)
             {
-                <div class="trait-panel">
-                    <h3 class="panel-title">@panel.Title</h3>
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <h3 class="panel-title">@panel.Title</h3>
+                        <div class="panel-selections">
+                            @{
+                                var selections = BuildState.GetSelections(panel.Key);
+                            }
+                            @if (selections.Any())
+                            {
+                                @if (panel.SelectionMode == SelectionMode.Single)
+                                {
+                                    var selection = selections.First();
+                                    <div class="selected-preview">
+                                        <img src="@selection.ImageUrl" alt="@selection.Display"
+                                             onerror="this.src='/img/tagging_sprites/default.jpg'; this.onerror=null;" />
+                                        <span class="selection-label">@selection.Display</span>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="selection-count">@selections.Count selected</span>
+                                }
+                            }
+                            else
+                            {
+                                <span class="no-selection">None selected</span>
+                            }
+                        </div>
+                    </div>
 
                     @foreach (var source in panel.Sources)
                     {
-                        var sourceKey = GetSourceKey(panel.Key, source);
-                        var isExpanded = IsSourceExpanded(panel.Key, source);
-
-                        <div class="source-section">
+                        <div class="source-row">
                             <div class="source-header">
                                 <h4 class="source-title">@(source.Title ?? "Options")</h4>
-                                <div class="source-controls">
-                                    <button class="multi-select-toggle @(IsMultiSelectMode(sourceKey) ? "active" : "")"
+                                <div class="source-header-controls">
+                                    @{
+                                        var sourceKey = GetSourceKey(panel.Key, source);
+                                        var isMultiSelect = IsMultiSelectMode(sourceKey);
+                                    }
+                                    <button class="multi-select-toggle @(isMultiSelect ? "active" : "")"
                                             @onclick="() => ToggleMultiSelectMode(sourceKey)">
                                         Multi
                                     </button>
                                     <button class="expand-btn" @onclick="() => ToggleSourceExpanded(panel.Key, source)">
-                                        @(isExpanded ? "▼" : "▶")
+                                        @(IsSourceExpanded(panel.Key, source) ? "v" : ">")
                                     </button>
                                 </div>
                             </div>
 
-                            @if (isExpanded)
+                            @if (IsSourceExpanded(panel.Key, source))
                             {
-                                var breadcrumbs = GetNavigationBreadcrumbs(sourceKey);
-                                @if (breadcrumbs.Count > 1)
-                                {
-                                    <div class="nav-breadcrumb">
-                                        <div class="nav-current @(IsNavigationDropdownOpen(sourceKey) ? "expanded" : "")"
-                                             @onclick="() => ToggleNavigationDropdown(sourceKey)">
-                                            <span class="nav-path">@breadcrumbs.Last().Display</span>
-                                            <span class="nav-toggle">▼</span>
-                                        </div>
-                                        @if (IsNavigationDropdownOpen(sourceKey))
-                                        {
-                                            <div class="nav-dropdown">
-                                                @for (int i = 0; i < breadcrumbs.Count; i++)
-                                                {
-                                                    var breadcrumb = breadcrumbs[i];
-                                                    var isLast = i == breadcrumbs.Count - 1;
-                                                    <button class="nav-option @(isLast ? "current" : "")"
-                                                            @onclick="() => NavigateToDropdownItem(sourceKey, i)">
-                                                        @breadcrumb.Display
-                                                    </button>
-                                                }
-                                            </div>
-                                        }
-                                    </div>
-                                }
+                                <div class="source-options" style="max-height: 200px; overflow-y: auto;">
+                                    @{
+                                        var sourceKey = GetSourceKey(panel.Key, source);
+                                        var sourceOptions = GetCurrentSourceOptions(sourceKey);
+                                        var breadcrumbs = GetNavigationBreadcrumbs(sourceKey);
+                                        var isMultiSelect = IsMultiSelectMode(sourceKey);
+                                    }
 
-                                var sourceOptions = GetCurrentSourceOptions(sourceKey);
-                                <div class="tag-grid">
+                                    @if (breadcrumbs.Count > 1)
+                                    {
+                                        <div class="navigation-dropdown">
+                                            <div class="current-location">
+                                                <span class="location-icon">🗂</span>
+                                                <span class="location-text">@breadcrumbs.Last().Display</span>
+                                                <button class="dropdown-toggle" @onclick="() => ToggleNavigationDropdown(sourceKey)">
+                                                    @(IsNavigationDropdownOpen(sourceKey) ? "^" : "v")
+                                                </button>
+                                            </div>
+
+                                            @if (IsNavigationDropdownOpen(sourceKey))
+                                            {
+                                                <div class="dropdown-menu">
+                                                    @for (int i = 0; i < breadcrumbs.Count; i++)
+                                                    {
+                                                        var breadcrumb = breadcrumbs[i];
+                                                        var isLast = i == breadcrumbs.Count - 1;
+                                                        var depth = i;
+
+                                                        <button class="dropdown-item @(isLast ? "current" : "")"
+                                                                style="padding-left: @((depth * 0.75 + 0.75)rem)"
+                                                                @onclick="() => NavigateToDropdownItem(sourceKey, i)">
+                                                            @if (depth > 0)
+                                                            {
+                                                                <span class="dropdown-indent">└ </span>
+                                                            }
+                                                            @breadcrumb.Display
+                                                            @if (isLast)
+                                                            {
+                                                                <span class="current-indicator">(current)</span>
+                                                            }
+                                                        </button>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+
                                     @if (sourceOptions?.Any() == true)
                                     {
-                                        @foreach (var option in sourceOptions)
-                                        {
-                                            var isSelected = BuildState.GetSelections(panel.Key)
-                                                .Any(s => s.CanonicalTag == option.CanonicalTag);
+                                        <div class="tile-grid-inline">
+                                            @foreach (var option in sourceOptions)
+                                            {
+                                                var isSelected = BuildState.GetSelections(panel.Key)
+                                                    .Any(s => s.CanonicalTag == option.CanonicalTag);
 
-                                            <div class="tag-tile @(isSelected ? "selected" : "") @(option.HasChildren ? "has-children" : "")"
-                                                 @onclick="() => HandleOptionClick(panel, option, sourceKey)">
-                                                <img src="@option.ImageUrl" alt="@option.Display" class="tile-image" loading="lazy" />
-                                                <div class="tile-label">@option.Display</div>
-                                                @if (option.HasChildren)
-                                                {
-                                                    <div class="children-indicator">+</div>
-                                                }
-                                            </div>
-                                        }
+                                                <div class="tile-inline @(isSelected ? "selected" : "") @(option.HasChildren ? "has-children" : "")"
+                                                     @onclick="() => HandleOptionClick(panel, option, sourceKey)">
+                                                    <img src="@option.ImageUrl" alt="@option.Display" loading="lazy" />
+                                                    <span class="tile-label">@option.Display</span>
+                                                    @if (option.HasChildren)
+                                                    {
+                                                        <span class="children-indicator">></span>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
                                     }
                                     else
                                     {
-                                        <div class="loading">Loading options...</div>
+                                        <div class="loading-options">Loading...</div>
                                     }
                                 </div>
                             }
@@ -127,46 +162,38 @@
         }
     </div>
 
-    <!-- Character Summary -->
-    <div class="character-summary">
-        <h3 class="summary-title">🎭 Character Prompt</h3>
-        <div class="prompt-preview">
-            @{
-                var allSelections = BuildState.GetAllSelections();
-            }
-            @if (allSelections.Any())
-            {
-                @foreach (var selection in allSelections)
+    <!-- Prompt Bar -->
+    <div class="prompt-bar">
+        <div class="prompt-content">
+            <div class="prompt-chips">
+                @foreach (var selection in BuildState.GetAllSelections())
                 {
-                    <div class="prompt-chip">
+                    <span class="prompt-chip">
                         @if (!string.IsNullOrEmpty(selection.GroupIcon))
                         {
                             <span class="chip-icon">@selection.GroupIcon</span>
                         }
                         @selection.Display
-                    </div>
+                    </span>
                 }
-            }
-            else
-            {
-                <div class="empty-prompt">Start building your character by selecting traits above!</div>
-            }
-        </div>
-        <div class="summary-actions">
-            <button class="action-btn primary" @onclick="CopyPrompt">📋 Copy Prompt</button>
-            <button class="action-btn secondary" @onclick="ResetSelections">🗑️ Reset All</button>
+            </div>
+            <div class="prompt-actions">
+                <button class="action-btn" @onclick="CopyPrompt">Copy</button>
+                <button class="action-btn reset" @onclick="ResetSelections">Reset</button>
+            </div>
         </div>
     </div>
 </div>
 
+
 @code {
-    private string activeGroupKey = "hair";
+    private string activeGroupKey = "hair"; // Updated to match new config
     private GroupConfig? activeGroup;
     private Dictionary<string, Dictionary<SourceConfig, bool>> expandedSources = new();
     private Dictionary<string, Dictionary<SourceConfig, List<TagOption>>> sourceOptionsCache = new();
-    private Dictionary<string, List<NavigationBreadcrumb>> navigationState = new();
-    private Dictionary<string, bool> multiSelectMode = new();
-    private Dictionary<string, bool> navigationDropdownOpen = new();
+    private Dictionary<string, List<NavigationBreadcrumb>> navigationState = new(); // Track navigation path for each source
+    private Dictionary<string, bool> multiSelectMode = new(); // Track if source is in multi-select mode
+    private Dictionary<string, bool> navigationDropdownOpen = new(); // Track dropdown open state
 
     public class NavigationBreadcrumb
     {
@@ -177,7 +204,9 @@
 
     protected override async Task OnInitializedAsync()
     {
+
         activeGroup = DesignerRegistry.GetGroup(activeGroupKey);
+
         BuildState.OnStateChanged += StateHasChanged;
 
         // Validate configuration in background
@@ -189,7 +218,6 @@
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Configuration validation failed: {ex.Message}");
             }
         });
     }
@@ -204,14 +232,6 @@
         activeGroupKey = groupKey;
         activeGroup = DesignerRegistry.GetGroup(groupKey);
         StateHasChanged();
-    }
-
-    private int GetGroupSelectionCount(string groupKey)
-    {
-        var group = DesignerRegistry.GetGroup(groupKey);
-        if (group == null) return 0;
-
-        return group.Panels.Sum(panel => BuildState.GetSelections(panel.Key).Count);
     }
 
     private async Task ToggleSourceExpanded(string panelKey, SourceConfig source)
@@ -241,6 +261,16 @@
     {
         return sourceOptionsCache.ContainsKey(panelKey) &&
                sourceOptionsCache[panelKey].ContainsKey(source);
+    }
+
+    private List<TagOption>? GetSourceOptions(string panelKey, SourceConfig source)
+    {
+        if (sourceOptionsCache.ContainsKey(panelKey) &&
+            sourceOptionsCache[panelKey].ContainsKey(source))
+        {
+            return sourceOptionsCache[panelKey][source];
+        }
+        return null;
     }
 
     private string GetSourceKey(string panelKey, SourceConfig source)
@@ -288,6 +318,7 @@
         {
             var childOptions = await LoadChildOptions(parentOption);
 
+            // Add new breadcrumb level
             if (!navigationState.ContainsKey(sourceKey))
                 navigationState[sourceKey] = new List<NavigationBreadcrumb>();
 
@@ -324,8 +355,12 @@
         var breadcrumbs = navigationState[sourceKey];
         if (breadcrumbIndex < breadcrumbs.Count)
         {
+            // Remove all breadcrumbs after the clicked one
             navigationState[sourceKey] = breadcrumbs.Take(breadcrumbIndex + 1).ToList();
+
+            // Close the dropdown
             navigationDropdownOpen[sourceKey] = false;
+
             StateHasChanged();
         }
     }
@@ -341,7 +376,7 @@
             foreach (var child in children)
             {
                 var hasChildren = TagGraphService.GetChildren(child.Id).Any();
-                var groupIcon = activeGroup?.Icon;
+                var groupIcon = activeGroup?.Icon; // Pass current group icon
 
                 options.Add(SpriteResolver.ResolveTag(child.Text, child.Id, hasChildren, groupIcon));
             }
@@ -366,6 +401,7 @@
             else if (source.Type == SourceType.FileGlob && !string.IsNullOrEmpty(source.FileGlob))
             {
                 var fileOptions = await SpriteResolver.DiscoverByFileGlobAsync(source.FileGlob);
+                // Add group icon to file options
                 foreach (var option in fileOptions)
                 {
                     option.GroupIcon = groupIcon;
@@ -373,17 +409,21 @@
                 options.AddRange(fileOptions);
             }
 
+            // Sort options
             options = options.OrderBy(o => o.Display).ToList();
 
+            // Initialize navigation state for this source
             if (!navigationState.ContainsKey(sourceKey))
                 navigationState[sourceKey] = new List<NavigationBreadcrumb>();
 
+            // Add root level to navigation
             navigationState[sourceKey].Add(new NavigationBreadcrumb
             {
                 Display = source.Title ?? "Root",
                 Options = options
             });
 
+            // Cache the results
             if (!sourceOptionsCache.ContainsKey(panelKey))
                 sourceOptionsCache[panelKey] = new Dictionary<SourceConfig, List<TagOption>>();
 
@@ -401,6 +441,7 @@
 
         try
         {
+            // Navigate to target node
             Node? currentNode = null;
 
             for (int i = 0; i < dbPath.Count; i++)
@@ -431,7 +472,9 @@
 
                 foreach (var child in children)
                 {
+                    // Check if this child has its own children
                     var hasChildren = TagGraphService.GetChildren(child.Id).Any();
+
                     options.Add(SpriteResolver.ResolveTag(child.Text, child.Id, hasChildren, groupIcon));
                 }
             }
@@ -446,6 +489,7 @@
 
     private void SelectOption(PanelConfig panel, TagOption option)
     {
+        // Determine if we should use multi-selection based on panel mode or source override
         var sourceKey = GetSourceKeyForPanel(panel, option);
         var effectiveSelectionMode = IsMultiSelectMode(sourceKey) ?
             Models.CharacterDesigner.SelectionMode.Multi :
@@ -461,6 +505,7 @@
 
     private string GetSourceKeyForPanel(PanelConfig panel, TagOption option)
     {
+        // Find which source this option came from (simplified approach)
         foreach (var source in panel.Sources)
         {
             var sourceKey = GetSourceKey(panel.Key, source);
@@ -472,6 +517,7 @@
             }
         }
 
+        // Fallback to first source
         return panel.Sources.Any() ? GetSourceKey(panel.Key, panel.Sources.First()) : string.Empty;
     }
 
