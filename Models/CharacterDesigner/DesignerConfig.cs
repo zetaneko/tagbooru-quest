@@ -12,6 +12,7 @@ public class GroupConfig
     public string Key { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string? Icon { get; set; }
+    public string? BackgroundImage { get; set; }
     public List<PanelConfig> Panels { get; set; } = new();
 }
 

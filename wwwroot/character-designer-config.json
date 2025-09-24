@@ -4,6 +4,7 @@
       "key": "hair",
       "title": "Hair",
       "icon": "💇",
+      "backgroundImage": "/img/tabs/hair-bg.jpg",
       "panels": [
         {
           "key": "hair_color",
@@ -51,6 +52,7 @@
       "key": "eyes",
       "title": "Eyes",
       "icon": "👀",
+      "backgroundImage": "/img/tabs/eyes-bg.jpg",
       "panels": [
         {
           "key": "eye_color",
@@ -72,6 +74,7 @@
       "key": "expression",
       "title": "Expression",
       "icon": "😊",
+      "backgroundImage": "/img/tabs/expression-bg.jpg",
       "panels": [
         {
           "key": "facial_expression",

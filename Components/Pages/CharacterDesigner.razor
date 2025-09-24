@@ -26,7 +26,9 @@
         @foreach (var group in DesignerRegistry.Config.Groups)
         {
             var selectionCount = GetGroupSelectionCount(group.Key);
+            var backgroundStyle = !string.IsNullOrEmpty(group.BackgroundImage) ? $"background-image: url('{group.BackgroundImage}')" : "";
             <button class="category-tab @(activeGroupKey == group.Key ? "active" : "")"
+                    style="@backgroundStyle"
                     @onclick="() => SetActiveGroup(group.Key)">
                 <div class="tab-icon">@group.Icon</div>
                 <div class="tab-title">@group.Title</div>
