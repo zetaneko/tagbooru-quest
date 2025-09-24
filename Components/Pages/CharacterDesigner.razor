@@ -68,33 +68,7 @@
 
                             @if (isExpanded)
                             {
-                                var breadcrumbs = GetNavigationBreadcrumbs(sourceKey);
-                                @if (breadcrumbs.Count > 1)
-                                {
-                                    <div class="nav-breadcrumb">
-                                        <div class="nav-current @(IsNavigationDropdownOpen(sourceKey) ? "expanded" : "")"
-                                             @onclick="() => ToggleNavigationDropdown(sourceKey)">
-                                            <span class="nav-path">@breadcrumbs.Last().Display</span>
-                                            <span class="nav-toggle">▼</span>
-                                        </div>
-                                        @if (IsNavigationDropdownOpen(sourceKey))
-                                        {
-                                            <div class="nav-dropdown">
-                                                @for (int i = 0; i < breadcrumbs.Count; i++)
-                                                {
-                                                    var breadcrumb = breadcrumbs[i];
-                                                    var isLast = i == breadcrumbs.Count - 1;
-                                                    <button class="nav-option @(isLast ? "current" : "")"
-                                                            @onclick="() => NavigateToDropdownItem(sourceKey, i)">
-                                                        @breadcrumb.Display
-                                                    </button>
-                                                }
-                                            </div>
-                                        }
-                                    </div>
-                                }
-
-                                var sourceOptions = GetCurrentSourceOptions(sourceKey);
+                                var sourceOptions = GetSourceOptions(panel.Key, source);
                                 <div class="tag-grid">
                                     @if (sourceOptions?.Any() == true)
                                     {
@@ -102,14 +76,46 @@
                                         {
                                             var isSelected = BuildState.GetSelections(panel.Key)
                                                 .Any(s => s.CanonicalTag == option.CanonicalTag);
+                                            var childrenKey = $"{sourceKey}_{option.CanonicalTag}";
+                                            var childrenExpanded = IsChildrenExpanded(childrenKey);
 
-                                            <div class="tag-tile @(isSelected ? "selected" : "") @(option.HasChildren ? "has-children" : "")"
-                                                 @onclick="() => HandleOptionClick(panel, option, sourceKey)">
-                                                <img src="@option.ImageUrl" alt="@option.Display" class="tile-image" loading="lazy" />
-                                                <div class="tile-label">@option.Display</div>
+                                            <div class="tag-item-container">
+                                                <!-- Main Tag Tile -->
+                                                <div class="tag-tile @(isSelected ? "selected" : "") @(option.HasChildren ? "has-children" : "")"
+                                                     @onclick="() => HandleTagClick(panel, option, sourceKey)">
+                                                    <img src="@option.ImageUrl" alt="@option.Display" class="tile-image" loading="lazy" />
+                                                    <div class="tile-label">@option.Display</div>
+                                                    @if (option.HasChildren)
+                                                    {
+                                                        <div class="children-indicator">@(childrenExpanded ? "−" : "+")</div>
+                                                    }
+                                                </div>
+
+                                                <!-- Children Dropdown (floating overlay) -->
                                                 @if (option.HasChildren)
                                                 {
-                                                    <div class="children-indicator">+</div>
+                                                    var childOptions = GetChildOptions(childrenKey);
+                                                    <div class="children-dropdown @(childrenExpanded ? "show" : "hide")" id="dropdown-@childrenKey">
+                                                        <div class="dropdown-arrow"></div>
+                                                        @if (childOptions?.Any() == true)
+                                                        {
+                                                            @foreach (var child in childOptions)
+                                                            {
+                                                                var childSelected = BuildState.GetSelections(panel.Key)
+                                                                    .Any(s => s.CanonicalTag == child.CanonicalTag);
+
+                                                                <div class="child-tag-tile @(childSelected ? "selected" : "")"
+                                                                     @onclick="() => HandleTagClick(panel, child, sourceKey)">
+                                                                    <img src="@child.ImageUrl" alt="@child.Display" class="child-tile-image" loading="lazy" />
+                                                                    <div class="child-tile-label">@child.Display</div>
+                                                                </div>
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            <div class="loading">Loading children...</div>
+                                                        }
+                                                    </div>
                                                 }
                                             </div>
                                         }
@@ -164,16 +170,9 @@
     private GroupConfig? activeGroup;
     private Dictionary<string, Dictionary<SourceConfig, bool>> expandedSources = new();
     private Dictionary<string, Dictionary<SourceConfig, List<TagOption>>> sourceOptionsCache = new();
-    private Dictionary<string, List<NavigationBreadcrumb>> navigationState = new();
+    private Dictionary<string, List<TagOption>> childOptionsCache = new();
     private Dictionary<string, bool> multiSelectMode = new();
-    private Dictionary<string, bool> navigationDropdownOpen = new();
-
-    public class NavigationBreadcrumb
-    {
-        public string Display { get; set; } = string.Empty;
-        public int? NodeId { get; set; }
-        public List<TagOption> Options { get; set; } = new();
-    }
+    private Dictionary<string, bool> childrenExpanded = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -192,6 +191,24 @@
                 Console.WriteLine($"Configuration validation failed: {ex.Message}");
             }
         });
+
+        // Position badges after component renders
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(100); // Let DOM settle
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("positionBadges");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Badge positioning failed: {ex.Message}");
+            }
+        });
+
+        // Set up JavaScript callback for dropdown close events
+        var dotNetRef = DotNetObjectReference.Create(this);
+        await JSRuntime.InvokeVoidAsync("setupDropdownCallbacks", dotNetRef);
     }
 
     public void Dispose()
@@ -199,11 +216,35 @@
         BuildState.OnStateChanged -= StateHasChanged;
     }
 
+    [JSInvokable]
+    public void OnDropdownClosed(string childrenKey)
+    {
+        Console.WriteLine($"Dropdown closed via click outside: {childrenKey}");
+
+        // Update the Blazor state to match the JavaScript state
+        if (childrenExpanded.ContainsKey(childrenKey) && childrenExpanded[childrenKey])
+        {
+            childrenExpanded[childrenKey] = false;
+            StateHasChanged();
+        }
+    }
+
     private void SetActiveGroup(string groupKey)
     {
         activeGroupKey = groupKey;
         activeGroup = DesignerRegistry.GetGroup(groupKey);
         StateHasChanged();
+
+        // Reposition badges after state change
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(50);
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("positionBadges");
+            }
+            catch { }
+        });
     }
 
     private int GetGroupSelectionCount(string groupKey)
@@ -248,15 +289,23 @@
         return $"{panelKey}_{source.GetHashCode()}";
     }
 
-    private List<TagOption>? GetCurrentSourceOptions(string sourceKey)
+    private List<TagOption>? GetSourceOptions(string panelKey, SourceConfig source)
     {
-        var breadcrumbs = GetNavigationBreadcrumbs(sourceKey);
-        return breadcrumbs.LastOrDefault()?.Options;
+        if (sourceOptionsCache.ContainsKey(panelKey) && sourceOptionsCache[panelKey].ContainsKey(source))
+        {
+            return sourceOptionsCache[panelKey][source];
+        }
+        return null;
     }
 
-    private List<NavigationBreadcrumb> GetNavigationBreadcrumbs(string sourceKey)
+    private List<TagOption>? GetChildOptions(string childrenKey)
     {
-        return navigationState.ContainsKey(sourceKey) ? navigationState[sourceKey] : new List<NavigationBreadcrumb>();
+        return childOptionsCache.ContainsKey(childrenKey) ? childOptionsCache[childrenKey] : null;
+    }
+
+    private bool IsChildrenExpanded(string childrenKey)
+    {
+        return childrenExpanded.ContainsKey(childrenKey) && childrenExpanded[childrenKey];
     }
 
     private bool IsMultiSelectMode(string sourceKey)
@@ -270,11 +319,12 @@
         StateHasChanged();
     }
 
-    private async Task HandleOptionClick(PanelConfig panel, TagOption option, string sourceKey)
+    private async Task HandleTagClick(PanelConfig panel, TagOption option, string sourceKey)
     {
         if (option.HasChildren)
         {
-            await NavigateToChildren(sourceKey, option);
+            var childrenKey = $"{sourceKey}_{option.CanonicalTag}";
+            await ToggleChildren(childrenKey, option);
         }
         else
         {
@@ -282,52 +332,34 @@
         }
     }
 
-    private async Task NavigateToChildren(string sourceKey, TagOption parentOption)
+    private async Task ToggleChildren(string childrenKey, TagOption parentOption)
     {
-        try
+        var isExpanded = IsChildrenExpanded(childrenKey);
+        childrenExpanded[childrenKey] = !isExpanded;
+
+        if (!isExpanded && !childOptionsCache.ContainsKey(childrenKey))
         {
-            var childOptions = await LoadChildOptions(parentOption);
-
-            if (!navigationState.ContainsKey(sourceKey))
-                navigationState[sourceKey] = new List<NavigationBreadcrumb>();
-
-            navigationState[sourceKey].Add(new NavigationBreadcrumb
+            // Load children on first expand
+            try
             {
-                Display = parentOption.Display,
-                NodeId = parentOption.NodeId,
-                Options = childOptions
-            });
-
-            StateHasChanged();
+                var childOptions = await LoadChildOptions(parentOption);
+                childOptionsCache[childrenKey] = childOptions;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error loading children: {ex.Message}");
+            }
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error navigating to children: {ex.Message}");
-        }
-    }
 
-    private void ToggleNavigationDropdown(string sourceKey)
-    {
-        navigationDropdownOpen[sourceKey] = !IsNavigationDropdownOpen(sourceKey);
         StateHasChanged();
-    }
 
-    private bool IsNavigationDropdownOpen(string sourceKey)
-    {
-        return navigationDropdownOpen.ContainsKey(sourceKey) && navigationDropdownOpen[sourceKey];
-    }
-
-    private void NavigateToDropdownItem(string sourceKey, int breadcrumbIndex)
-    {
-        if (!navigationState.ContainsKey(sourceKey)) return;
-
-        var breadcrumbs = navigationState[sourceKey];
-        if (breadcrumbIndex < breadcrumbs.Count)
+        // Position the dropdown after state update
+        if (!isExpanded) // Now expanded
         {
-            navigationState[sourceKey] = breadcrumbs.Take(breadcrumbIndex + 1).ToList();
-            navigationDropdownOpen[sourceKey] = false;
-            StateHasChanged();
+            await Task.Delay(50); // Let DOM update completely
+            await JSRuntime.InvokeVoidAsync("positionDropdown", $"dropdown-{childrenKey}");
         }
+        // No need to call JavaScript for hiding - CSS handles it with show/hide classes
     }
 
     private async Task<List<TagOption>> LoadChildOptions(TagOption parentOption)
@@ -374,15 +406,6 @@
             }
 
             options = options.OrderBy(o => o.Display).ToList();
-
-            if (!navigationState.ContainsKey(sourceKey))
-                navigationState[sourceKey] = new List<NavigationBreadcrumb>();
-
-            navigationState[sourceKey].Add(new NavigationBreadcrumb
-            {
-                Display = source.Title ?? "Root",
-                Options = options
-            });
 
             if (!sourceOptionsCache.ContainsKey(panelKey))
                 sourceOptionsCache[panelKey] = new Dictionary<SourceConfig, List<TagOption>>();
@@ -464,9 +487,9 @@
         foreach (var source in panel.Sources)
         {
             var sourceKey = GetSourceKey(panel.Key, source);
-            var breadcrumbs = GetNavigationBreadcrumbs(sourceKey);
+            var sourceOptions = GetSourceOptions(panel.Key, source);
 
-            if (breadcrumbs.Any(b => b.Options.Any(o => o.CanonicalTag == option.CanonicalTag)))
+            if (sourceOptions?.Any(o => o.CanonicalTag == option.CanonicalTag) == true)
             {
                 return sourceKey;
             }
