@@ -655,6 +655,78 @@
       ]
     },
     {
+      "key": "topwear-tab",
+      "title": "Topwear",
+      "icon": "",
+      "backgroundImage": "/img/tabs/topwear-bg.jpg",
+      "panels": [
+        {
+          "key": "topwear",
+          "title": "Topwear",
+          "selectionMode": "Multi",
+          "promptOrderWeight": 40,
+          "sources": [
+            {
+              "type": "DbQuery",
+              "title": "Shirts and Topwear",
+              "dbPath": [ "Attire And Body Accessories", "Attire", "Shirt And Topwear" ],
+              "expandedByDefault": true
+            }
+          ]
+        },
+        {
+          "key": "Dress",
+          "title": "Dress",
+          "selectionMode": "Multi",
+          "promptOrderWeight": 40,
+          "sources": [
+            {
+              "type": "DbQuery",
+              "title": "Dress Style",
+              "dbPath": [ "Attire And Body Accessories", "Dress", "Dress Model And Shape" ],
+              "expandedByDefault": true
+            },
+            {
+              "type": "DbQuery",
+              "title": "Dress Colors",
+              "dbPath": [ "Attire And Body Accessories", "Dress", "Dress Colors" ],
+              "expandedByDefault": false
+            },
+            {
+              "type": "DbQuery",
+              "title": "Multiple Dress Colors",
+              "dbPath": [ "Attire And Body Accessories", "Dress", "Multiple Dress Colors" ],
+              "expandedByDefault": false
+            },
+            {
+              "type": "DbQuery",
+              "title": "Dress Colors",
+              "dbPath": [ "Attire And Body Accessories", "Dress", "Pattern And Print Dresses" ],
+              "expandedByDefault": false
+            },
+            {
+              "type": "DbQuery",
+              "title": "Dress Length",
+              "dbPath": [ "Attire And Body Accessories", "Dress", "Length Of Dress" ],
+              "expandedByDefault": false
+            },
+            {
+              "type": "DbQuery",
+              "title": "Other Details",
+              "dbPath": [ "Attire And Body Accessories", "Dress", "Other Details" ],
+              "expandedByDefault": false
+            },
+            {
+              "type": "DbQuery",
+              "title": "Dress Colors",
+              "dbPath": [ "Attire And Body Accessories", "Dress", "Misc" ],
+              "expandedByDefault": false
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "expression",
       "title": "Expression",
       "icon": "",
