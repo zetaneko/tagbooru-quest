@@ -91,6 +91,42 @@
       ]
     },
     {
+      "key": "torso",
+      "title": "Torso",
+      "icon": "",
+      "backgroundImage": "/img/tabs/torso-bg.jpg",
+      "panels": [
+        {
+          "key": "uppertorso",
+          "title": "Upper Torso",
+          "selectionMode": "Multi",
+          "promptOrderWeight": 20,
+          "sources": [
+            {
+              "type": "DbQuery",
+              "title": "All",
+              "dbPath": [ "Body", "Torso", "Upper Torso" ],
+              "expandedByDefault": true
+            }
+          ]
+        },
+        {
+          "key": "uppertorso",
+          "title": "Lower Torso",
+          "selectionMode": "Multi",
+          "promptOrderWeight": 20,
+          "sources": [
+            {
+              "type": "DbQuery",
+              "title": "All",
+              "dbPath": [ "Body", "Torso", "Lower Torso" ],
+              "expandedByDefault": true
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "hair",
       "title": "Hair",
       "icon": "",
@@ -401,6 +437,218 @@
               "title": "Other Ears",
               "dbPath": [ "Body", "Head", "Ears", "Other Ears" ],
               "expandedByDefault": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "headwear",
+      "title": "Headwear",
+      "icon": "",
+      "backgroundImage": "/img/tabs/headwear-bg.jpg",
+      "panels": [
+        {
+          "key": "head_wear",
+          "title": "Types, Colors Etc.",
+          "selectionMode": "Multi",
+          "promptOrderWeight": 40,
+          "sources": [
+            {
+              "type": "DbQuery",
+              "title": "Headwear Colors",
+              "dbPath": [ "Attire And Body Accessories", "Headwear And Headgear", "Headwear Colors" ],
+              "expandedByDefault": true
+            },
+            {
+              "type": "DbQuery",
+              "title": "Headwear Types",
+              "dbPath": [ "Attire And Body Accessories", "Headwear And Headgear", "Headwear Types" ],
+              "expandedByDefault": false
+            },
+            {
+              "type": "DbQuery",
+              "title": "Accessories",
+              "dbPath": [ "Attire And Body Accessories", "Headwear And Headgear", "Accessories" ],
+              "expandedByDefault": false
+            },
+            {
+              "type": "DbQuery",
+              "title": "Not Headwear",
+              "dbPath": [ "Attire And Body Accessories", "Headwear And Headgear", "Not Headwear" ],
+              "expandedByDefault": false
+            }
+          ]
+        },
+        {
+          "key": "head_wear",
+          "title": "Hats",
+          "selectionMode": "Multi",
+          "promptOrderWeight": 40,
+          "sources": [
+            {
+              "type": "DbQuery",
+              "title": "Brim Hats",
+              "dbPath": [ "Attire And Body Accessories", "Headwear And Headgear", "Brim Hats" ],
+              "expandedByDefault": true
+            },
+            {
+              "type": "DbQuery",
+              "title": "Brimless Hats",
+              "dbPath": [ "Attire And Body Accessories", "Headwear And Headgear", "Brimless Hats" ],
+              "expandedByDefault": false
+            },
+            {
+              "type": "DbQuery",
+              "title": "Ear Flap Hats",
+              "dbPath": [ "Attire And Body Accessories", "Headwear And Headgear", "Ear Flap Hats" ],
+              "expandedByDefault": false
+            },
+            {
+              "type": "DbQuery",
+              "title": "Visor Hats",
+              "dbPath": [ "Attire And Body Accessories", "Headwear And Headgear", "Visor Hats" ],
+              "expandedByDefault": false
+            }
+          ]
+        },
+        {
+          "key": "head_wear",
+          "title": "Other Headwear",
+          "selectionMode": "Multi",
+          "promptOrderWeight": 40,
+          "sources": [
+            {
+              "type": "DbQuery",
+              "title": "Crowns",
+              "dbPath": [ "Attire And Body Accessories", "Headwear And Headgear", "Crowns" ],
+              "expandedByDefault": true
+            },
+            {
+              "type": "DbQuery",
+              "title": "Helmets",
+              "dbPath": [ "Attire And Body Accessories", "Headwear And Headgear", "Helmets" ],
+              "expandedByDefault": false
+            },
+            {
+              "type": "DbQuery",
+              "title": "Non-Specific",
+              "dbPath": [ "Attire And Body Accessories", "Headwear And Headgear", "Non-Specific" ],
+              "expandedByDefault": false
+            },
+            {
+              "type": "DbQuery",
+              "title": "Other",
+              "dbPath": [ "Attire And Body Accessories", "Headwear And Headgear", "Other" ],
+              "expandedByDefault": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "hairattire",
+      "title": "Hairwear",
+      "icon": "",
+      "backgroundImage": "/img/tabs/hairattire-bg.jpg",
+      "panels": [
+        {
+          "key": "accessories",
+          "title": "Hair Accessories",
+          "selectionMode": "Multi",
+          "promptOrderWeight": 40,
+          "sources": [
+            {
+              "type": "DbQuery",
+              "title": "Accessories",
+              "dbPath": [ "Attire And Body Accessories", "Hair", "Accessories" ],
+              "expandedByDefault": true
+            }
+          ]
+        },
+        {
+          "key": "accessories",
+          "title": "Hair Ornament",
+          "selectionMode": "Multi",
+          "promptOrderWeight": 40,
+          "sources": [
+            {
+              "type": "DbQuery",
+              "title": "Ornaments",
+              "dbPath": [ "Attire And Body Accessories", "Attire", "Jewelry And Accessories", "Head And Face", "Hair Ornament" ],
+              "expandedByDefault": true
+            },
+            {
+              "type": "DbQuery",
+              "title": "Hair Care Objects",
+              "dbPath": [ "Attire And Body Accessories", "Hair", "Hair Care Objects" ],
+              "expandedByDefault": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "jewelry",
+      "title": "Jewelry",
+      "icon": "",
+      "backgroundImage": "/img/tabs/jewelry-bg.jpg",
+      "panels": [
+        {
+          "key": "jewerybybodyarea",
+          "title": "By Body Area",
+          "selectionMode": "Multi",
+          "promptOrderWeight": 40,
+          "sources": [
+            {
+              "type": "DbQuery",
+              "title": "General",
+              "dbPath": [ "Attire And Body Accessories", "Accessories", "Jewelry", "General" ],
+              "expandedByDefault": true
+            },
+            {
+              "type": "DbQuery",
+              "title": "Head",
+              "dbPath": [ "Attire And Body Accessories", "Accessories", "Jewelry", "Head" ],
+              "expandedByDefault": false
+            },
+            {
+              "type": "DbQuery",
+              "title": "Neck",
+              "dbPath": [ "Attire And Body Accessories", "Accessories", "Jewelry", "Neck" ],
+              "expandedByDefault": false
+            },
+            {
+              "type": "DbQuery",
+              "title": "Torso",
+              "dbPath": [ "Attire And Body Accessories", "Accessories", "Jewelry", "Torso" ],
+              "expandedByDefault": false
+            },
+            {
+              "type": "DbQuery",
+              "title": "Arms",
+              "dbPath": [ "Attire And Body Accessories", "Accessories", "Jewelry", "Arms" ],
+              "expandedByDefault": false
+            },
+            {
+              "type": "DbQuery",
+              "title": "Legs",
+              "dbPath": [ "Attire And Body Accessories", "Accessories", "Jewelry", "Legs" ],
+              "expandedByDefault": false
+            }
+          ]
+        },
+        {
+          "key": "jewelryheadandface",
+          "title": "Head and Face",
+          "selectionMode": "Multi",
+          "promptOrderWeight": 40,
+          "sources": [
+            {
+              "type": "DbQuery",
+              "title": "All",
+              "dbPath": [ "Attire And Body Accessories", "Attire", "Jewelry And Accessories", "Head And Face" ],
+              "expandedByDefault": true
             }
           ]
         }
