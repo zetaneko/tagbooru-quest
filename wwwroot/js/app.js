@@ -204,19 +204,41 @@ window.positionNestedDropdown = (dropdown, dropdownId) => {
     dropdown.style.visibility = '';
     dropdown.style.opacity = '';
 
-    // Find the parent tile for nested dropdowns
-    let parentTile = dropdown.parentNode.querySelector('.child-tag-tile, .recursive-tag-tile');
+    // Find the parent tile for nested dropdowns BEFORE moving to document.body
+    let parentTile = dropdown.parentNode.querySelector('.child-tag-tile, .recursive-tag-tile, .nested-child-tile');
     if (!parentTile) {
         // Try looking in the previous sibling or parent container
-        const parentContainer = dropdown.closest('.child-tag-container, .recursive-tag-container');
+        const parentContainer = dropdown.closest('.child-tag-container, .recursive-tag-container, .nested-child-container');
         if (parentContainer) {
-            parentTile = parentContainer.querySelector('.child-tag-tile, .recursive-tag-tile');
+            parentTile = parentContainer.querySelector('.child-tag-tile, .recursive-tag-tile, .nested-child-tile');
         }
     }
 
     if (!parentTile) {
         console.log('Parent tile not found for nested dropdown:', dropdownId);
         return;
+    }
+
+    // Move dropdown to document body to escape container clipping (like main dropdowns)
+    if (dropdown.parentNode !== document.body) {
+        // Store reference to original parent tile before moving
+        if (parentTile.id) {
+            dropdown.dataset.originalNestedTileId = parentTile.id;
+        } else {
+            // Create an ID if it doesn't exist
+            parentTile.id = 'nested-tile-' + Math.random().toString(36).substr(2, 9);
+            dropdown.dataset.originalNestedTileId = parentTile.id;
+        }
+
+        console.log('Moving nested dropdown to document body, storing tile reference:', parentTile.id);
+        document.body.appendChild(dropdown);
+    } else if (dropdown.dataset.originalNestedTileId) {
+        // Dropdown already in document.body, get stored reference
+        parentTile = document.getElementById(dropdown.dataset.originalNestedTileId);
+        if (!parentTile) {
+            console.log('Stored parent tile not found for nested dropdown:', dropdownId);
+            return;
+        }
     }
 
     // Extract depth from dropdown class
@@ -228,24 +250,26 @@ window.positionNestedDropdown = (dropdown, dropdownId) => {
 
     console.log('Nested dropdown depth:', depth);
 
-    // Get parent tile position
+    // Get parent tile position (absolute coordinates)
     const parentRect = parentTile.getBoundingClientRect();
     const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
     const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
 
+    console.log('Parent tile rect:', parentRect);
+    console.log('Scroll offsets:', scrollLeft, scrollTop);
+
     // Position off-screen first to measure dimensions
     dropdown.style.visibility = 'hidden';
     dropdown.style.opacity = '1';
-    dropdown.style.position = 'absolute';
+    dropdown.style.position = 'fixed'; // Use fixed positioning like main dropdowns
     dropdown.style.top = '0px';
     dropdown.style.left = '0px';
 
     const dropdownRect = dropdown.getBoundingClientRect();
 
-    console.log('Parent tile rect:', parentRect);
     console.log('Nested dropdown rect:', dropdownRect);
 
-    // Calculate position based on depth and viewport constraints
+    // Calculate position based on depth and viewport constraints (viewport-relative for fixed positioning)
     const margin = 15;
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
@@ -253,51 +277,49 @@ window.positionNestedDropdown = (dropdown, dropdownId) => {
     let left, top;
 
     // Horizontal positioning: alternate between right and left expansion based on depth and space
-    const rightSpaceAvailable = viewportWidth - (parentRect.right + scrollLeft) - margin;
-    const leftSpaceAvailable = (parentRect.left + scrollLeft) - margin;
+    const rightSpaceAvailable = viewportWidth - parentRect.right - margin;
+    const leftSpaceAvailable = parentRect.left - margin;
 
     // For even depths (2, 4, 6...) or when right space is sufficient, expand right
     // For odd depths (3, 5, 7...) or when left space is more available, expand left
     if ((depth % 2 === 0 && rightSpaceAvailable >= dropdownRect.width) ||
         (rightSpaceAvailable >= leftSpaceAvailable && rightSpaceAvailable >= dropdownRect.width)) {
-        // Expand to the right
-        left = parentRect.right + scrollLeft + 5; // 5px gap from parent
+        // Expand to the right (viewport coordinates)
+        left = parentRect.right + 5; // 5px gap from parent
     } else if (leftSpaceAvailable >= dropdownRect.width) {
-        // Expand to the left
-        left = parentRect.left + scrollLeft - dropdownRect.width - 5;
+        // Expand to the left (viewport coordinates)
+        left = parentRect.left - dropdownRect.width - 5;
     } else {
         // Not enough space on either side, choose the side with more space
         if (rightSpaceAvailable >= leftSpaceAvailable) {
-            left = parentRect.right + scrollLeft + 5;
+            left = parentRect.right + 5;
         } else {
-            left = parentRect.left + scrollLeft - dropdownRect.width - 5;
+            left = parentRect.left - dropdownRect.width - 5;
         }
     }
 
-    // Vertical positioning: align with parent top, but adjust if goes off screen
-    top = parentRect.top + scrollTop;
+    // Vertical positioning: align with parent top (viewport coordinates)
+    top = parentRect.top;
 
     // Adjust if dropdown goes off bottom of viewport
-    const topRelativeToViewport = top - scrollTop;
-    if (topRelativeToViewport + dropdownRect.height > viewportHeight - margin) {
+    if (top + dropdownRect.height > viewportHeight - margin) {
         // Move up so bottom aligns with viewport bottom
-        top = scrollTop + viewportHeight - dropdownRect.height - margin;
+        top = viewportHeight - dropdownRect.height - margin;
 
         // Ensure it doesn't go above viewport
-        if (top < scrollTop + margin) {
-            top = scrollTop + margin;
+        if (top < margin) {
+            top = margin;
         }
     }
 
     // Final bounds checking for horizontal position
-    const leftRelativeToViewport = left - scrollLeft;
-    if (leftRelativeToViewport < margin) {
-        left = scrollLeft + margin;
-    } else if (leftRelativeToViewport + dropdownRect.width > viewportWidth - margin) {
-        left = scrollLeft + viewportWidth - dropdownRect.width - margin;
+    if (left < margin) {
+        left = margin;
+    } else if (left + dropdownRect.width > viewportWidth - margin) {
+        left = viewportWidth - dropdownRect.width - margin;
     }
 
-    // Apply position and make visible
+    // Apply position and make visible (using viewport coordinates)
     dropdown.style.left = left + 'px';
     dropdown.style.top = top + 'px';
     dropdown.style.visibility = 'visible';
