@@ -1,0 +1,936 @@
+@using TagbooruQuest.Services.ComfyUI
+@inject ComfyPreviewViewModel ViewModel
+@implements IDisposable
+
+<div class="live-preview-panel @(IsCollapsed ? "collapsed" : "expanded")">
+    <!-- Panel Header -->
+    <div class="panel-header" @onclick="TogglePanel">
+        <h3 class="panel-title">🎨 Live Preview</h3>
+        <button class="collapse-btn @(IsCollapsed ? "collapsed" : "")">
+            @(IsCollapsed ? "◀" : "▶")
+        </button>
+    </div>
+
+    <!-- Panel Content -->
+    @if (!IsCollapsed)
+    {
+        <div class="panel-content">
+            <!-- Connection Section -->
+            <div class="connection-section">
+                <div class="section-header">
+                    <span class="section-icon">🔗</span>
+                    <span class="section-title">Connection</span>
+                </div>
+
+                <div class="connection-controls">
+                    <div class="toggle-row">
+                        <label class="toggle-label">
+                            <input type="checkbox" @bind="ViewModel.Enabled" />
+                            <span class="toggle-slider"></span>
+                            Enable ComfyUI integration
+                        </label>
+                    </div>
+
+                    <div class="input-row">
+                        <label>Server URL:</label>
+                        <input type="text" @bind="ViewModel.ServerUrl" placeholder="http://127.0.0.1:8188"
+                               disabled="@ViewModel.Enabled" class="url-input" />
+                    </div>
+
+                    <div class="status-row">
+                        <span class="status-pill @ViewModel.ConnectionStatus.ToString().ToLower()">
+                            @ViewModel.StatusMessage
+                        </span>
+                        @if (ViewModel.ConnectionStatus == ConnectionStatus.Connected)
+                        {
+                            <button class="refresh-btn" @onclick="RefreshCheckpoints" title="Refresh checkpoints">
+                                🔄
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            @if (ViewModel.Enabled && ViewModel.ConnectionStatus == ConnectionStatus.Connected)
+            {
+                <!-- Preview Section (Always Visible) -->
+                <div class="preview-section">
+                    <div class="preview-content">
+                        @if (ViewModel.IsProcessing)
+                        {
+
+                        }
+
+                        @if (ViewModel.CurrentImage != null)
+                        {
+                            <div class="image-preview">
+                                <img src="data:image/png;base64,@Convert.ToBase64String(ViewModel.CurrentImage)"
+                                     alt="Generated preview" class="preview-image" />
+                                <div class="image-actions">
+                                    <!--
+                                    <button class="pin-btn" @onclick="PinCurrentFrame" title="Save current frame">
+                                        📌 Pin
+                                    </button>-->
+                                </div>
+                            </div>
+                        }
+                        else if (!ViewModel.IsProcessing)
+                        {
+                            <div class="no-preview">
+                                <div class="placeholder-icon">🎨</div>
+                                <div class="placeholder-text">Live preview will appear here</div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Collapsible Settings -->
+                <details class="settings-section">
+                    <summary class="settings-summary">
+                        <span class="section-icon">⚙️</span>
+                        <span class="section-title">Settings</span>
+                    </summary>
+
+                    <div class="settings-content">
+                        <!-- Model Section -->
+                        <div class="model-section">
+                            <div class="subsection-header">
+                                <span class="section-icon">🤖</span>
+                                <span class="section-title">Model</span>
+                            </div>
+
+                            <div class="model-controls">
+                                <div class="input-row">
+                                    <label>Checkpoint:</label>
+                                    <select @bind="ViewModel.SelectedCheckpoint" class="checkpoint-select">
+                                        @foreach (var checkpoint in ViewModel.AvailableCheckpoints)
+                                        {
+                                            <option value="@checkpoint">@checkpoint</option>
+                                        }
+                                    </select>
+                                </div>
+
+                                <!-- Generation settings -->
+                                <details class="generation-details">
+                                    <summary>Generation Parameters</summary>
+                                    <div class="settings-grid">
+                                        <div class="setting-row">
+                                            <label>Seed:</label>
+                                            <input type="number" @bind="ViewModel.Seed" class="number-input" />
+                                        </div>
+                                        <div class="setting-row">
+                                            <label>Steps:</label>
+                                            <input type="number" @bind="ViewModel.Steps" min="8" max="80" class="number-input" />
+                                        </div>
+                                        <div class="setting-row">
+                                            <label>CFG:</label>
+                                            <input type="number" @bind="ViewModel.Cfg" step="0.1" min="1" max="10" class="number-input" />
+                                        </div>
+                                        <div class="setting-row">
+                                            <label>Sampler:</label>
+                                            <input type="text" @bind="ViewModel.SamplerName" class="text-input" />
+                                        </div>
+                                        <div class="setting-row">
+                                            <label>Scheduler:</label>
+                                            <input type="text" @bind="ViewModel.Scheduler" class="text-input" />
+                                        </div>
+                                        <div class="setting-row">
+                                            <label>Size:</label>
+                                            <div class="size-inputs">
+                                                <input type="number" @bind="ViewModel.Width" min="64" max="2048" step="64" class="size-input" />
+                                                <span>×</span>
+                                                <input type="number" @bind="ViewModel.Height" min="64" max="2048" step="64" class="size-input" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </details>
+                            </div>
+                        </div>
+
+                        <!-- Prompt Section -->
+                        <div class="prompt-section">
+                            <div class="subsection-header">
+                                <span class="section-icon">📝</span>
+                                <span class="section-title">Current Prompt</span>
+                            </div>
+
+                            <div class="prompt-display">
+                                <div class="prompt-positive">
+                                    <label>Positive:</label>
+                                    <div class="prompt-text">@ViewModel.PositivePrompt</div>
+                                </div>
+                                @if (!string.IsNullOrEmpty(ViewModel.NegativePrompt))
+                                {
+                                    <div class="prompt-negative">
+                                        <label>Negative:</label>
+                                        <div class="prompt-text">@ViewModel.NegativePrompt</div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Behavior Section -->
+                        <div class="behavior-section">
+                            <div class="subsection-header">
+                                <span class="section-icon">🔄</span>
+                                <span class="section-title">Behavior</span>
+                            </div>
+
+                            <div class="behavior-controls">
+                                <div class="toggle-row">
+                                    <label class="toggle-label">
+                                        <input type="checkbox" @bind="ViewModel.CancelAndRestart" />
+                                        <span class="toggle-slider"></span>
+                                        Cancel & restart on prompt change
+                                    </label>
+                                </div>
+
+                                <div class="input-row">
+                                    <label>Debounce (ms):</label>
+                                    <div class="slider-row">
+                                        <input type="range" @bind="ViewModel.DebounceMs" min="150" max="500" step="25" class="debounce-slider" />
+                                        <span class="debounce-value">@ViewModel.DebounceMs ms</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public bool IsCollapsed { get; set; } = false;
+    [Parameter] public EventCallback<bool> IsCollapsedChanged { get; set; }
+
+    protected override void OnInitialized()
+    {
+        ViewModel.PropertyChanged += (sender, args) => InvokeAsync(StateHasChanged);
+    }
+
+    private async Task TogglePanel()
+    {
+        IsCollapsed = !IsCollapsed;
+        await IsCollapsedChanged.InvokeAsync(IsCollapsed);
+    }
+
+    private async Task RefreshCheckpoints()
+    {
+        await ViewModel.RefreshCheckpointsAsync();
+    }
+
+    private async Task InterruptGeneration()
+    {
+        await ViewModel.InterruptAsync();
+    }
+
+    private async Task PinCurrentFrame()
+    {
+        // TODO: Implement frame pinning to gallery
+        // This would save the current image to a local gallery
+    }
+
+    public void Dispose()
+    {
+        // Clean up subscriptions if needed
+    }
+}
+
+<style>
+/* Live Preview Panel - Matching Character Designer Glass-morphism */
+.live-preview-panel {
+    position: fixed;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 400px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(15px);
+    border-left: 1px solid rgba(255, 255, 255, 0.2);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    box-shadow: -2px 0 20px rgba(0, 0, 0, 0.4);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+.live-preview-panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.live-preview-panel.collapsed {
+    transform: translateX(360px);
+}
+
+/* Panel Header with Gradient */
+.panel-header {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    cursor: pointer;
+    user-select: none;
+}
+
+.panel-title {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 700;
+    background: linear-gradient(45deg, #4ecdc4, #44a08d);
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: gradient 3s ease infinite;
+    text-shadow: 0 0 20px rgba(78, 205, 196, 0.3);
+}
+
+@@keyframes gradient {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+.collapse-btn {
+    background: none;
+    border: none;
+    color: #4ecdc4;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    width: 35px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: rgba(78, 205, 196, 0.1);
+    border: 2px solid rgba(78, 205, 196, 0.3);
+}
+
+.collapse-btn:hover {
+    background: rgba(78, 205, 196, 0.2);
+    border-color: #4ecdc4;
+    transform: scale(1.1);
+    box-shadow: 0 0 15px rgba(78, 205, 196, 0.3);
+}
+
+.collapse-btn.collapsed {
+    transform: rotate(180deg);
+}
+
+/* Panel Content */
+.panel-content {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    padding: 1rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(78, 205, 196, 0.6) transparent;
+}
+
+.panel-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.panel-content::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+
+.panel-content::-webkit-scrollbar-thumb {
+    background: rgba(78, 205, 196, 0.6);
+    border-radius: 3px;
+}
+
+/* Connection Section */
+.connection-section {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
+    padding: 1rem;
+    transition: all 0.3s ease;
+}
+
+.connection-section:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+    color: #4ecdc4;
+    font-size: 1rem;
+}
+
+.subsection-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+    color: #4ecdc4;
+    font-size: 0.9rem;
+}
+
+.section-icon {
+    font-size: 1.1rem;
+    filter: drop-shadow(0 0 5px rgba(78, 205, 196, 0.3));
+}
+
+/* Connection Controls */
+.connection-controls,
+.model-controls,
+.behavior-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.toggle-row {
+    display: flex;
+    align-items: center;
+}
+
+.toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    user-select: none;
+    color: #fff;
+    font-size: 0.9rem;
+}
+
+.toggle-label input[type="checkbox"] {
+    display: none;
+}
+
+.toggle-slider {
+    position: relative;
+    width: 40px;
+    height: 20px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.toggle-slider::before {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: white;
+    top: 2px;
+    left: 2px;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+input[type="checkbox"]:checked + .toggle-slider {
+    background: linear-gradient(45deg, #4ecdc4, #44a08d);
+    box-shadow: 0 0 10px rgba(78, 205, 196, 0.4);
+}
+
+input[type="checkbox"]:checked + .toggle-slider::before {
+    transform: translateX(20px);
+}
+
+/* Input Styles */
+.input-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.input-row label {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 500;
+}
+
+.slider-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.url-input,
+.number-input,
+.text-input,
+.checkpoint-select {
+    padding: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    color: #fff;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+}
+
+.url-input:focus,
+.number-input:focus,
+.text-input:focus,
+.checkpoint-select:focus {
+    outline: none;
+    border-color: #4ecdc4;
+    box-shadow: 0 0 15px rgba(78, 205, 196, 0.3);
+}
+
+/* Status Pill */
+.status-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.status-pill {
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-pill.connected {
+    background: linear-gradient(45deg, #4CAF50, #45a047);
+    color: white;
+    box-shadow: 0 0 15px rgba(76, 175, 80, 0.4);
+}
+
+.status-pill.disconnected {
+    background: rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.status-pill.error {
+    background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+    color: white;
+    box-shadow: 0 0 15px rgba(255, 107, 107, 0.4);
+}
+
+.refresh-btn {
+    background: rgba(78, 205, 196, 0.1);
+    border: 2px solid rgba(78, 205, 196, 0.3);
+    color: #4ecdc4;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    width: 35px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.refresh-btn:hover {
+    background: rgba(78, 205, 196, 0.2);
+    border-color: #4ecdc4;
+    transform: scale(1.1);
+    box-shadow: 0 0 15px rgba(78, 205, 196, 0.3);
+}
+
+/* Settings Section */
+.settings-section {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
+    overflow-y: auto;
+    transition: all 0.3s ease;
+}
+
+.settings-section:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.settings-summary {
+    cursor: pointer;
+    padding: 1rem 1.5rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: none;
+    color: #4ecdc4;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    user-select: none;
+    transition: all 0.3s ease;
+    list-style: none;
+}
+
+.settings-summary:hover {
+    background: rgba(0, 0, 0, 0.3);
+    color: #5ee7d7;
+}
+
+.settings-summary::-webkit-details-marker {
+    display: none;
+}
+
+.settings-content {
+    padding: 1rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+        overflow-y: auto;
+}
+
+.generation-details {
+    margin-top: 0.75rem;
+}
+
+.generation-details summary {
+    cursor: pointer;
+    padding: 0.5rem 0.75rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.9rem;
+    user-select: none;
+    transition: all 0.3s ease;
+}
+
+.generation-details summary:hover {
+    background: rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.generation-details summary::-webkit-details-marker {
+    display: none;
+}
+
+.settings-grid {
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.setting-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.setting-row label {
+    flex-shrink: 0;
+    min-width: 60px;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.size-inputs {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.size-input {
+    width: 80px;
+}
+
+/* Preview Section */
+.preview-section {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
+    padding: 1rem;
+    transition: all 0.3s ease;
+}
+
+.preview-section:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.preview-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* Progress Indicator */
+.processing-indicator {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: center;
+    padding: 1.5rem;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(45deg, #4ecdc4, #44a08d);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+    box-shadow: 0 0 10px rgba(78, 205, 196, 0.5);
+}
+
+.progress-text {
+    font-size: 0.9rem;
+    text-align: center;
+    color: #fff;
+    font-weight: 500;
+}
+
+.current-node {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.8rem;
+}
+
+.interrupt-btn {
+    padding: 0.6rem 1.5rem;
+    background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+    color: white;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 8px 25px rgba(255, 107, 107, 0.3);
+}
+
+.interrupt-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 35px rgba(255, 107, 107, 0.4);
+}
+
+/* Image Preview */
+.image-preview {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.preview-image {
+    width: 100%;
+    height: auto;
+    border-radius: 12px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+}
+
+.preview-image:hover {
+    transform: scale(1.02);
+    border-color: rgba(78, 205, 196, 0.5);
+    box-shadow: 0 12px 35px rgba(78, 205, 196, 0.2);
+}
+
+.image-actions {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.pin-btn {
+    padding: 0.5rem 1rem;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.3s ease;
+}
+
+.pin-btn:hover {
+    background: rgba(78, 205, 196, 0.2);
+    border-color: #4ecdc4;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(78, 205, 196, 0.3);
+}
+
+/* No Preview Placeholder */
+.no-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 2rem;
+    color: rgba(255, 255, 255, 0.5);
+    text-align: center;
+}
+
+.placeholder-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.3;
+    animation: pulse 2s infinite;
+}
+
+@@keyframes pulse {
+    0% { opacity: 0.3; }
+    50% { opacity: 0.6; }
+    100% { opacity: 0.3; }
+}
+
+.placeholder-text {
+    font-size: 1rem;
+    font-style: italic;
+}
+
+/* Prompt Display */
+.prompt-display {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.prompt-positive,
+.prompt-negative {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.prompt-text {
+    padding: 0.75rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    max-height: 100px;
+    overflow-y: auto;
+    color: #fff;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(78, 205, 196, 0.6) transparent;
+}
+
+.prompt-text::-webkit-scrollbar {
+    width: 4px;
+}
+
+.prompt-text::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+}
+
+.prompt-text::-webkit-scrollbar-thumb {
+    background: rgba(78, 205, 196, 0.6);
+    border-radius: 2px;
+}
+
+/* Debounce Slider */
+.debounce-slider {
+    flex: 1;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+    outline: none;
+    -webkit-appearance: none;
+}
+
+.debounce-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: linear-gradient(45deg, #4ecdc4, #44a08d);
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(78, 205, 196, 0.5);
+}
+
+.debounce-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: linear-gradient(45deg, #4ecdc4, #44a08d);
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 0 10px rgba(78, 205, 196, 0.5);
+}
+
+.debounce-value {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.7);
+    min-width: 60px;
+    text-align: right;
+    font-weight: 500;
+}
+
+/* Mobile Responsive */
+@@media (max-width: 768px) {
+    .live-preview-panel {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        transform: translateY(0);
+    }
+
+    .live-preview-panel.collapsed {
+        transform: translateY(100%);
+    }
+
+    .panel-header {
+        justify-content: center;
+        position: relative;
+    }
+
+    .collapse-btn {
+        position: absolute;
+        right: 1rem;
+    }
+}
+</style>

@@ -1,6 +1,8 @@
 @page "/character"
 @using TagbooruQuest.Models.CharacterDesigner
 @using TagbooruQuest.Services.CharacterDesigner
+@using TagbooruQuest.Services.ComfyUI
+@using TagbooruQuest.Components.Shared
 @using TagbooruQuest.Data
 @inject IDesignerRegistry DesignerRegistry
 @inject ITagSpriteResolver SpriteResolver
@@ -11,7 +13,7 @@
 
 <PageTitle>Character Designer</PageTitle>
 
-<div class="character-builder">
+<div class="character-builder @(isLivePreviewCollapsed ? "" : "with-live-preview")">
     <!-- Header with Title and Stats -->
     <div class="builder-header">
         <h1 class="builder-title">⚔️ Character Builder</h1>
@@ -166,6 +168,9 @@
     </div>
 </div>
 
+<!-- ComfyUI Live Preview Panel -->
+<ComfyUILivePreview IsCollapsed="isLivePreviewCollapsed" IsCollapsedChanged="(bool value) => isLivePreviewCollapsed = value" />
+
 @code {
     private string activeGroupKey = "hair";
     private GroupConfig? activeGroup;
@@ -174,6 +179,7 @@
     private Dictionary<string, List<TagOption>> childOptionsCache = new();
     private Dictionary<string, bool> multiSelectMode = new();
     private Dictionary<string, bool> childrenExpanded = new();
+    private bool isLivePreviewCollapsed = false;
 
     protected override async Task OnInitializedAsync()
     {
