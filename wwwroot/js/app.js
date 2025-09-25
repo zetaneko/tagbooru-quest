@@ -219,27 +219,9 @@ window.positionNestedDropdown = (dropdown, dropdownId) => {
         return;
     }
 
-    // Move dropdown to document body to escape container clipping (like main dropdowns)
-    if (dropdown.parentNode !== document.body) {
-        // Store reference to original parent tile before moving
-        if (parentTile.id) {
-            dropdown.dataset.originalNestedTileId = parentTile.id;
-        } else {
-            // Create an ID if it doesn't exist
-            parentTile.id = 'nested-tile-' + Math.random().toString(36).substr(2, 9);
-            dropdown.dataset.originalNestedTileId = parentTile.id;
-        }
-
-        console.log('Moving nested dropdown to document body, storing tile reference:', parentTile.id);
-        document.body.appendChild(dropdown);
-    } else if (dropdown.dataset.originalNestedTileId) {
-        // Dropdown already in document.body, get stored reference
-        parentTile = document.getElementById(dropdown.dataset.originalNestedTileId);
-        if (!parentTile) {
-            console.log('Stored parent tile not found for nested dropdown:', dropdownId);
-            return;
-        }
-    }
+    // DO NOT move nested dropdowns to document.body - keep them in their containers
+    // This prevents orphaning issues when components are destroyed/recreated
+    console.log('Keeping nested dropdown in original container to prevent orphaning');
 
     // Extract depth from dropdown class
     let depth = 1;
@@ -250,18 +232,18 @@ window.positionNestedDropdown = (dropdown, dropdownId) => {
 
     console.log('Nested dropdown depth:', depth);
 
-    // Get parent tile position (absolute coordinates)
+    // Get parent tile position relative to its container (not viewport)
     const parentRect = parentTile.getBoundingClientRect();
-    const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
-    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    const dropdownContainer = dropdown.parentNode;
+    const containerRect = dropdownContainer.getBoundingClientRect();
 
     console.log('Parent tile rect:', parentRect);
-    console.log('Scroll offsets:', scrollLeft, scrollTop);
+    console.log('Container rect:', containerRect);
 
     // Position off-screen first to measure dimensions
     dropdown.style.visibility = 'hidden';
     dropdown.style.opacity = '1';
-    dropdown.style.position = 'fixed'; // Use fixed positioning like main dropdowns
+    dropdown.style.position = 'absolute'; // Use absolute positioning within container
     dropdown.style.top = '0px';
     dropdown.style.left = '0px';
 
@@ -269,57 +251,48 @@ window.positionNestedDropdown = (dropdown, dropdownId) => {
 
     console.log('Nested dropdown rect:', dropdownRect);
 
-    // Calculate position based on depth and viewport constraints (viewport-relative for fixed positioning)
-    const margin = 15;
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
+    // Calculate position relative to container (not viewport since we're using absolute positioning)
+    const margin = 5;
+
+    // Calculate relative positions within the container
+    const parentLeftRelativeToContainer = parentRect.left - containerRect.left;
+    const parentTopRelativeToContainer = parentRect.top - containerRect.top;
+    const parentRightRelativeToContainer = parentLeftRelativeToContainer + parentRect.width;
 
     let left, top;
 
-    // Horizontal positioning: alternate between right and left expansion based on depth and space
-    const rightSpaceAvailable = viewportWidth - parentRect.right - margin;
-    const leftSpaceAvailable = parentRect.left - margin;
+    // Simple horizontal positioning: try to expand right, fallback to left
+    const containerWidth = containerRect.width;
+    const rightSpaceAvailable = containerWidth - parentRightRelativeToContainer - margin;
 
-    // For even depths (2, 4, 6...) or when right space is sufficient, expand right
-    // For odd depths (3, 5, 7...) or when left space is more available, expand left
-    if ((depth % 2 === 0 && rightSpaceAvailable >= dropdownRect.width) ||
-        (rightSpaceAvailable >= leftSpaceAvailable && rightSpaceAvailable >= dropdownRect.width)) {
-        // Expand to the right (viewport coordinates)
-        left = parentRect.right + 5; // 5px gap from parent
-    } else if (leftSpaceAvailable >= dropdownRect.width) {
-        // Expand to the left (viewport coordinates)
-        left = parentRect.left - dropdownRect.width - 5;
+    if (rightSpaceAvailable >= dropdownRect.width) {
+        // Expand to the right
+        left = parentRightRelativeToContainer + 5; // 5px gap from parent
     } else {
-        // Not enough space on either side, choose the side with more space
-        if (rightSpaceAvailable >= leftSpaceAvailable) {
-            left = parentRect.right + 5;
-        } else {
-            left = parentRect.left - dropdownRect.width - 5;
+        // Expand to the left
+        left = parentLeftRelativeToContainer - dropdownRect.width - 5;
+
+        // Ensure it doesn't go off the left edge of container
+        if (left < margin) {
+            left = margin;
         }
     }
 
-    // Vertical positioning: align with parent top (viewport coordinates)
-    top = parentRect.top;
+    // Vertical positioning: align with parent top, but ensure it stays in container
+    top = parentTopRelativeToContainer;
 
-    // Adjust if dropdown goes off bottom of viewport
-    if (top + dropdownRect.height > viewportHeight - margin) {
-        // Move up so bottom aligns with viewport bottom
-        top = viewportHeight - dropdownRect.height - margin;
+    // Ensure dropdown doesn't go off bottom of container
+    const containerHeight = containerRect.height;
+    if (top + dropdownRect.height > containerHeight - margin) {
+        top = containerHeight - dropdownRect.height - margin;
 
-        // Ensure it doesn't go above viewport
+        // Ensure it doesn't go above container top
         if (top < margin) {
             top = margin;
         }
     }
 
-    // Final bounds checking for horizontal position
-    if (left < margin) {
-        left = margin;
-    } else if (left + dropdownRect.width > viewportWidth - margin) {
-        left = viewportWidth - dropdownRect.width - margin;
-    }
-
-    // Apply position and make visible (using viewport coordinates)
+    // Apply position and make visible (using container-relative coordinates)
     dropdown.style.left = left + 'px';
     dropdown.style.top = top + 'px';
     dropdown.style.visibility = 'visible';
@@ -477,6 +450,70 @@ window.cleanupHiddenDropdowns = () => {
     });
 };
 
+// Global function to cleanup orphaned dropdowns in document.body (CONSERVATIVE)
+window.cleanupOrphanedDropdowns = () => {
+    console.log('Running conservative orphaned dropdown cleanup');
+
+    // Find all dropdowns that were moved to document.body
+    const bodyDropdowns = document.body.querySelectorAll('.children-dropdown, .nested-children-dropdown, .recursive-children-dropdown');
+
+    bodyDropdowns.forEach(dropdown => {
+        // Only remove dropdowns that are clearly orphaned AND have been hidden for a while
+        const originalTileId = dropdown.dataset.originalTagId || dropdown.dataset.originalNestedTileId;
+        const isHidden = dropdown.classList.contains('hide') ||
+                        dropdown.style.visibility === 'hidden' ||
+                        dropdown.style.top === '-9999px';
+
+        // Be very conservative - only remove if:
+        // 1. Has no original tile reference AND is hidden, OR
+        // 2. Has original tile reference but tile doesn't exist AND dropdown is hidden
+        if (!originalTileId && isHidden) {
+            console.log('Removing unreferenced hidden dropdown:', dropdown.id);
+            dropdown.remove();
+        } else if (originalTileId && isHidden) {
+            const originalTile = document.getElementById(originalTileId);
+            if (!originalTile) {
+                console.log('Removing orphaned hidden dropdown:', dropdown.id);
+                dropdown.remove();
+            }
+        }
+        // Don't remove anything that might still be in use
+    });
+};
+
+// Function for Blazor to call when component state changes (group navigation, etc.)
+window.onBlazorStateChange = () => {
+    console.log('Blazor state change detected, cleaning up orphaned dropdowns');
+    cleanupOrphanedDropdowns();
+    cleanupHiddenDropdowns();
+};
+
+// Targeted cleanup for nested dropdowns only (safer for group switches)
+window.cleanupNestedDropdownsOnly = () => {
+    console.log('Cleaning up nested dropdowns only');
+
+    // Find only nested dropdowns that were moved to document.body
+    const nestedDropdowns = document.body.querySelectorAll('.nested-children-dropdown, .recursive-children-dropdown');
+
+    nestedDropdowns.forEach(dropdown => {
+        console.log('Removing nested dropdown:', dropdown.id);
+        dropdown.remove();
+    });
+
+    // Also clean up any clearly hidden main dropdowns
+    const mainDropdowns = document.body.querySelectorAll('.children-dropdown');
+    mainDropdowns.forEach(dropdown => {
+        const isHidden = dropdown.classList.contains('hide') ||
+                        dropdown.style.visibility === 'hidden' ||
+                        dropdown.style.top === '-9999px';
+
+        if (isHidden) {
+            console.log('Removing hidden main dropdown:', dropdown.id);
+            dropdown.remove();
+        }
+    });
+};
+
 // Start periodic cleanup (runs every 10 seconds to catch any edge cases without interfering)
 window.startDropdownCleanup = () => {
     if (window.dropdownCleanupInterval) {
@@ -485,7 +522,11 @@ window.startDropdownCleanup = () => {
 
     window.dropdownCleanupInterval = setInterval(() => {
         window.cleanupHiddenDropdowns();
-    }, 10000);
+        // Reduced frequency orphaned cleanup to prevent crashes
+        if (Math.random() < 0.1) { // Only 10% of the time
+            cleanupOrphanedDropdowns();
+        }
+    }, 30000); // Increased to 30 seconds
 };
 
 // Stop cleanup when page unloads

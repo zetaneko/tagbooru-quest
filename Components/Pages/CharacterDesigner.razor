@@ -214,6 +214,16 @@
         activeGroup = DesignerRegistry.GetGroup(activeGroupKey);
         BuildState.OnStateChanged += StateHasChanged;
 
+        // Disabled aggressive cleanup to prevent crashes
+        // try
+        // {
+        //     await JSRuntime.InvokeVoidAsync("onBlazorStateChange");
+        // }
+        // catch (Exception ex)
+        // {
+        //     Console.WriteLine($"Error calling onBlazorStateChange: {ex.Message}");
+        // }
+
         // Initialize default expansion states from configuration
         InitializeDefaultExpansionStates();
 
@@ -301,6 +311,9 @@
     {
         activeGroupKey = groupKey;
         activeGroup = DesignerRegistry.GetGroup(groupKey);
+
+        // Cleanup disabled - let Blazor handle component lifecycle naturally
+
         StateHasChanged();
 
         // Reposition badges after state change
