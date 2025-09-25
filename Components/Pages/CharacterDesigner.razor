@@ -79,7 +79,7 @@
                                         {
                                             var isSelected = BuildState.GetSelections(panel.Key)
                                                 .Any(s => s.CanonicalTag == option.CanonicalTag);
-                                            var childrenKey = $"{sourceKey}_{option.CanonicalTag}";
+                                            var childrenKey = GetSanitizedChildrenKey(sourceKey, option);
                                             var childrenExpanded = IsChildrenExpanded(childrenKey);
 
                                             <div class="tag-item-container">
@@ -106,11 +106,39 @@
                                                             {
                                                                 var childSelected = BuildState.GetSelections(panel.Key)
                                                                     .Any(s => s.CanonicalTag == child.CanonicalTag);
+                                                                var childChildrenKey = SanitizeForHtmlId($"{childrenKey}_{child.CanonicalTag}");
+                                                                var childChildrenExpanded = IsChildrenExpanded(childChildrenKey);
 
-                                                                <div class="child-tag-tile @(childSelected ? "selected" : "")"
-                                                                     @onclick="() => HandleTagClick(panel, child, sourceKey)">
-                                                                    <img src="@child.ImageUrl" alt="@child.Display" class="child-tile-image" loading="lazy" onerror="this.src='img/sprites/others.jpg'" />
-                                                                    <div class="child-tile-label">@child.Display</div>
+                                                                <div class="child-tag-container">
+                                                                    <div class="child-tag-tile @(childSelected ? "selected" : "") @(child.HasChildren ? "has-children" : "")"
+                                                                         @onclick="() => HandleTagClick(panel, child, childrenKey)">
+                                                                        <img src="@child.ImageUrl" alt="@child.Display" class="child-tile-image" loading="lazy" onerror="this.src='img/sprites/others.jpg'" />
+                                                                        <div class="child-tile-label">@child.Display</div>
+                                                                        @if (child.HasChildren)
+                                                                        {
+                                                                            <div class="child-children-indicator">@(childChildrenExpanded ? "−" : "+")</div>
+                                                                        }
+                                                                    </div>
+
+                                                                    <!-- Nested Children Dropdown (recursive) -->
+                                                                    @if (child.HasChildren)
+                                                                    {
+                                                                        var childChildOptions = GetChildOptions(childChildrenKey);
+                                                                        <div class="nested-children-dropdown @(childChildrenExpanded ? "show" : "hide")" id="dropdown-@childChildrenKey">
+                                                                            <div class="dropdown-arrow"></div>
+                                                                            @if (childChildOptions?.Any() == true)
+                                                                            {
+                                                                                @foreach (var grandchild in childChildOptions)
+                                                                                {
+                                                                                    @RenderNestedChild(panel, grandchild, sourceKey, childChildrenKey, 2)
+                                                                                }
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                <div class="loading">Loading children...</div>
+                                                                            }
+                                                                        </div>
+                                                                    }
                                                                 </div>
                                                             }
                                                         }
@@ -363,7 +391,7 @@
     {
         if (option.HasChildren)
         {
-            var childrenKey = $"{sourceKey}_{option.CanonicalTag}";
+            var childrenKey = GetSanitizedChildrenKey(sourceKey, option);
             await ToggleChildren(childrenKey, option);
         }
         else
@@ -374,6 +402,7 @@
 
     private async Task ToggleChildren(string childrenKey, TagOption parentOption)
     {
+        Console.WriteLine($"ToggleChildren called with childrenKey: '{childrenKey}'");
         var isExpanded = IsChildrenExpanded(childrenKey);
         childrenExpanded[childrenKey] = !isExpanded;
 
@@ -397,12 +426,16 @@
         if (!isExpanded) // Now expanded
         {
             await Task.Delay(50); // Let DOM update completely
-            await JSRuntime.InvokeVoidAsync("positionDropdown", $"dropdown-{childrenKey}");
+            var dropdownId = $"dropdown-{childrenKey}";
+            Console.WriteLine($"Calling positionDropdown with ID: '{dropdownId}'");
+            await JSRuntime.InvokeVoidAsync("positionDropdown", dropdownId);
         }
         else // Now collapsed
         {
             // Explicitly hide the dropdown
-            await JSRuntime.InvokeVoidAsync("hideDropdown", $"dropdown-{childrenKey}");
+            var dropdownId = $"dropdown-{childrenKey}";
+            Console.WriteLine($"Calling hideDropdown with ID: '{dropdownId}'");
+            await JSRuntime.InvokeVoidAsync("hideDropdown", dropdownId);
         }
 
         // Let the periodic cleanup handle any edge cases
@@ -554,6 +587,24 @@
         return panel.Sources.Any() ? GetSourceKey(panel.Key, panel.Sources.First()) : string.Empty;
     }
 
+    private string SanitizeForHtmlId(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+            return input;
+
+        // Replace spaces and special characters with underscores
+        // Keep alphanumeric, hyphens, and underscores only
+        return System.Text.RegularExpressions.Regex.Replace(input, @"[^a-zA-Z0-9\-_]", "_");
+    }
+
+    private string GetSanitizedChildrenKey(string sourceKey, TagOption option)
+    {
+        var originalKey = $"{sourceKey}_{option.CanonicalTag}";
+        var sanitizedKey = SanitizeForHtmlId(originalKey);
+        Console.WriteLine($"GetSanitizedChildrenKey: '{originalKey}' -> '{sanitizedKey}'");
+        return sanitizedKey;
+    }
+
     private async Task CopyPrompt()
     {
         var prompt = BuildState.BuildPrompt();
@@ -623,4 +674,83 @@
             await JSRuntime.InvokeVoidAsync("scrollToTag", canonicalTag);
         }
     }
+
+    private RenderFragment RenderNestedChild(PanelConfig panel, TagOption child, string sourceKey, string parentKey, int depth) => builder =>
+    {
+        var childSelected = BuildState.GetSelections(panel.Key).Any(s => s.CanonicalTag == child.CanonicalTag);
+        var nestedChildrenKey = SanitizeForHtmlId($"{parentKey}_{child.CanonicalTag}");
+        var nestedChildrenExpanded = IsChildrenExpanded(nestedChildrenKey);
+        var depthClass = $"nested-depth-{Math.Min(depth, 5)}"; // Limit visual depth to 5 levels
+
+        builder.OpenElement(0, "div");
+        builder.AddAttribute(1, "class", "nested-child-container");
+
+        // Render the nested child tile
+        builder.OpenElement(2, "div");
+        builder.AddAttribute(3, "class", $"nested-child-tile {depthClass} {(childSelected ? "selected" : "")} {(child.HasChildren ? "has-children" : "")}");
+        builder.AddAttribute(4, "onclick", EventCallback.Factory.Create(this, () => {
+            Console.WriteLine($"RenderNestedChild: HandleTagClick called with parentKey: '{parentKey}', child: '{child.CanonicalTag}'");
+            HandleTagClick(panel, child, parentKey);
+        }));
+
+        // Child image
+        builder.OpenElement(5, "img");
+        builder.AddAttribute(6, "src", child.ImageUrl);
+        builder.AddAttribute(7, "alt", child.Display);
+        builder.AddAttribute(8, "class", "nested-child-image");
+        builder.AddAttribute(9, "loading", "lazy");
+        builder.AddAttribute(10, "onerror", "this.src='img/sprites/others.jpg'");
+        builder.CloseElement(); // img
+
+        // Child label
+        builder.OpenElement(11, "div");
+        builder.AddAttribute(12, "class", "nested-child-label");
+        builder.AddContent(13, child.Display);
+        builder.CloseElement(); // label div
+
+        // Children indicator if has children
+        if (child.HasChildren)
+        {
+            builder.OpenElement(14, "div");
+            builder.AddAttribute(15, "class", "nested-children-indicator");
+            builder.AddContent(16, nestedChildrenExpanded ? "−" : "+");
+            builder.CloseElement(); // indicator div
+        }
+
+        builder.CloseElement(); // tile div
+
+        // Recursive nested dropdown
+        if (child.HasChildren && depth < 10) // Prevent infinite recursion, max 10 levels
+        {
+            var nestedChildOptions = GetChildOptions(nestedChildrenKey);
+
+            builder.OpenElement(17, "div");
+            builder.AddAttribute(18, "class", $"recursive-children-dropdown {depthClass} {(nestedChildrenExpanded ? "show" : "hide")}");
+            builder.AddAttribute(19, "id", $"dropdown-{nestedChildrenKey}");
+
+            // Dropdown arrow
+            builder.OpenElement(20, "div");
+            builder.AddAttribute(21, "class", "dropdown-arrow");
+            builder.CloseElement();
+
+            if (nestedChildOptions?.Any() == true)
+            {
+                foreach (var grandchild in nestedChildOptions)
+                {
+                    builder.AddContent(22, RenderNestedChild(panel, grandchild, sourceKey, nestedChildrenKey, depth + 1));
+                }
+            }
+            else
+            {
+                builder.OpenElement(23, "div");
+                builder.AddAttribute(24, "class", "loading");
+                builder.AddContent(25, "Loading children...");
+                builder.CloseElement();
+            }
+
+            builder.CloseElement(); // dropdown div
+        }
+
+        builder.CloseElement(); // container div
+    };
 }

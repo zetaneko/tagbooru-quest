@@ -775,6 +775,235 @@
     text-transform: capitalize;
 }
 
+/* Nested Children Containers */
+.child-tag-container,
+.nested-child-container {
+    position: relative;
+}
+
+.child-children-indicator,
+.nested-children-indicator {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    background: linear-gradient(45deg, #f9ca24, #f39c12);
+    color: #000;
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.5rem;
+    font-weight: 700;
+    box-shadow: 0 2px 6px rgba(249, 202, 36, 0.4);
+}
+
+/* Nested Children Dropdowns */
+.nested-children-dropdown,
+.recursive-children-dropdown {
+    position: absolute;
+    z-index: 999990; /* High but lower than main dropdown */
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+    gap: 0.5rem;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.95);
+    backdrop-filter: blur(20px);
+    border: 2px solid rgba(78, 205, 196, 0.4);
+    border-radius: 16px;
+    box-shadow:
+        0 20px 40px rgba(0, 0, 0, 0.9),
+        0 0 0 1px rgba(255, 255, 255, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    max-height: 200px;
+    overflow-y: auto;
+    min-width: 280px;
+    max-width: 400px;
+    width: max-content;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(78, 205, 196, 0.6) transparent;
+    top: -9999px;
+    left: -9999px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease-out, visibility 0.2s ease-out;
+    pointer-events: auto;
+}
+
+/* Depth-based positioning for nested dropdowns */
+.nested-children-dropdown.nested-depth-2 {
+    left: 100%;
+    top: 0;
+    margin-left: 0.5rem;
+}
+
+.recursive-children-dropdown.nested-depth-3 {
+    left: 100%;
+    top: 0;
+    margin-left: 0.5rem;
+}
+
+.recursive-children-dropdown.nested-depth-4 {
+    left: -100%;
+    top: 0;
+    margin-left: -0.5rem;
+}
+
+.recursive-children-dropdown.nested-depth-5 {
+    left: -100%;
+    top: 0;
+    margin-left: -0.5rem;
+}
+
+.nested-children-dropdown.show,
+.recursive-children-dropdown.show {
+    animation: nestedDropdownAppear 0.2s ease-out forwards;
+}
+
+.nested-children-dropdown.hide,
+.recursive-children-dropdown.hide {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    top: -9999px !important;
+    left: -9999px !important;
+    z-index: -1 !important;
+}
+
+@keyframes nestedDropdownAppear {
+    from {
+        opacity: 0;
+        visibility: visible;
+        transform: translateY(-5px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Nested Child Tiles */
+.nested-child-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.5rem 0.3rem;
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    text-decoration: none;
+    color: #fff;
+    min-width: 50px;
+}
+
+.nested-child-tile:hover {
+    transform: translateY(-1px) scale(1.02);
+    border-color: #4ecdc4;
+    box-shadow: 0 4px 12px rgba(78, 205, 196, 0.2);
+}
+
+.nested-child-tile.selected {
+    background: linear-gradient(135deg, #4ecdc4, #44a08d);
+    border-color: #4ecdc4;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(78, 205, 196, 0.3);
+}
+
+.nested-child-tile.has-children {
+    border-color: #f9ca24;
+}
+
+.nested-child-tile.has-children:hover {
+    border-color: #f39c12;
+    box-shadow: 0 4px 12px rgba(249, 202, 36, 0.3);
+}
+
+/* Depth-based styling for visual hierarchy */
+.nested-child-tile.nested-depth-2 {
+    border-width: 1.5px;
+    font-size: 0.85rem;
+}
+
+.nested-child-tile.nested-depth-3 {
+    border-width: 1px;
+    font-size: 0.8rem;
+}
+
+.nested-child-tile.nested-depth-4,
+.nested-child-tile.nested-depth-5 {
+    border-width: 1px;
+    font-size: 0.75rem;
+    padding: 0.4rem 0.25rem;
+}
+
+.nested-child-image {
+    width: 35px;
+    height: 35px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    transition: all 0.2s ease;
+}
+
+.nested-child-tile.nested-depth-3 .nested-child-image,
+.nested-child-tile.nested-depth-4 .nested-child-image,
+.nested-child-tile.nested-depth-5 .nested-child-image {
+    width: 30px;
+    height: 30px;
+}
+
+.nested-child-tile:hover .nested-child-image {
+    transform: scale(1.05);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.nested-child-label {
+    font-size: 0.6rem;
+    font-weight: 600;
+    text-align: center;
+    line-height: 1.1;
+    text-transform: capitalize;
+}
+
+.nested-child-tile.nested-depth-3 .nested-child-label,
+.nested-child-tile.nested-depth-4 .nested-child-label,
+.nested-child-tile.nested-depth-5 .nested-child-label {
+    font-size: 0.55rem;
+}
+
+/* Scrollbars for nested dropdowns */
+.nested-children-dropdown::-webkit-scrollbar,
+.recursive-children-dropdown::-webkit-scrollbar {
+    width: 6px;
+}
+
+.nested-children-dropdown::-webkit-scrollbar-track,
+.recursive-children-dropdown::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    margin: 0.25rem 0;
+}
+
+.nested-children-dropdown::-webkit-scrollbar-thumb,
+.recursive-children-dropdown::-webkit-scrollbar-thumb {
+    background: linear-gradient(45deg, #4ecdc4, #44a08d);
+    border-radius: 3px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.nested-children-dropdown::-webkit-scrollbar-thumb:hover,
+.recursive-children-dropdown::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(45deg, #5ee7d7, #4fb3a6);
+}
+
 /* Character Summary */
 .character-summary {
     position: relative;
@@ -968,6 +1197,121 @@
     height: 100%;
     background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
     transition: left 0.5s;
+}
+
+/* Recursive/Nested Children Visual Indicators */
+.recursive-children-indicator,
+.nested-children-indicator {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    font-size: 8px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    transition: all 0.3s ease;
+    z-index: 10;
+}
+
+/* Depth-based colors and sizes for nested indicators */
+.depth-1 .nested-children-indicator,
+.depth-1 .recursive-children-indicator {
+    background: rgba(138, 43, 226, 0.8); /* Blue violet */
+    backdrop-filter: blur(3px);
+}
+
+.depth-2 .nested-children-indicator,
+.depth-2 .recursive-children-indicator {
+    background: rgba(30, 144, 255, 0.8); /* Dodger blue */
+    backdrop-filter: blur(3px);
+    width: 12px;
+    height: 12px;
+    font-size: 7px;
+}
+
+.depth-3 .nested-children-indicator,
+.depth-3 .recursive-children-indicator {
+    background: rgba(0, 191, 255, 0.8); /* Deep sky blue */
+    backdrop-filter: blur(3px);
+    width: 11px;
+    height: 11px;
+    font-size: 6px;
+}
+
+.depth-4 .nested-children-indicator,
+.depth-4 .recursive-children-indicator {
+    background: rgba(0, 206, 209, 0.8); /* Dark turquoise */
+    backdrop-filter: blur(3px);
+    width: 10px;
+    height: 10px;
+    font-size: 6px;
+}
+
+.depth-5 .nested-children-indicator,
+.depth-5 .recursive-children-indicator {
+    background: rgba(50, 205, 50, 0.8); /* Lime green */
+    backdrop-filter: blur(3px);
+    width: 9px;
+    height: 9px;
+    font-size: 5px;
+}
+
+/* Hover effects for nested indicators */
+.recursive-tag-tile:hover .nested-children-indicator,
+.recursive-tag-tile:hover .recursive-children-indicator,
+.child-tag-tile:hover .nested-children-indicator,
+.child-tag-tile:hover .recursive-children-indicator {
+    transform: scale(1.2);
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
+}
+
+/* Active/expanded state for indicators */
+.nested-children-expanded .nested-children-indicator,
+.recursive-children-expanded .recursive-children-indicator {
+    background: rgba(255, 215, 0, 0.9); /* Gold */
+    transform: scale(1.1);
+    box-shadow: 0 0 6px rgba(255, 215, 0, 0.6);
+}
+
+/* Breadcrumb trail visual for nested levels */
+.recursive-tag-container.depth-2::before,
+.recursive-tag-container.depth-3::before,
+.recursive-tag-container.depth-4::before,
+.recursive-tag-container.depth-5::before {
+    content: '';
+    position: absolute;
+    left: -8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 6px;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.3);
+    z-index: 1;
+}
+
+/* Connection lines for nested depth visualization */
+.recursive-children-dropdown.depth-2::after,
+.recursive-children-dropdown.depth-3::after,
+.recursive-children-dropdown.depth-4::after,
+.recursive-children-dropdown.depth-5::after {
+    content: '';
+    position: absolute;
+    left: -1px;
+    top: 0;
+    width: 1px;
+    height: 100%;
+    background: linear-gradient(to bottom,
+        rgba(255, 255, 255, 0.2),
+        rgba(255, 255, 255, 0.1),
+        transparent
+    );
+    z-index: -1;
 }
 
 .action-btn:hover::before {

@@ -39,10 +39,30 @@ window.downloadFile = (filename, content, contentType = 'text/plain') => {
 };
 
 window.positionDropdown = (dropdownId) => {
+    console.log('positionDropdown called with ID:', dropdownId);
+
+    // Debug: List all dropdown elements in DOM
+    const allDropdowns = document.querySelectorAll('[id^="dropdown-"]');
+    console.log('All dropdown elements found:', Array.from(allDropdowns).map(el => el.id));
+
     const dropdown = document.getElementById(dropdownId);
     if (!dropdown) {
         console.log('Dropdown not found:', dropdownId);
+        console.log('Searching for partial matches...');
+        const partialMatches = Array.from(allDropdowns).filter(el =>
+            el.id.includes(dropdownId.replace('dropdown-', '')) ||
+            dropdownId.includes(el.id.replace('dropdown-', ''))
+        );
+        console.log('Partial matches:', partialMatches.map(el => el.id));
         return;
+    }
+
+    // Determine dropdown type and handle positioning accordingly
+    const isNestedDropdown = dropdown.classList.contains('nested-children-dropdown') ||
+                            dropdown.classList.contains('recursive-children-dropdown');
+
+    if (isNestedDropdown) {
+        return positionNestedDropdown(dropdown, dropdownId);
     }
 
     // Clear any previous hiding state and reset all properties
@@ -174,6 +194,192 @@ window.positionDropdown = (dropdownId) => {
     }
 };
 
+// Position nested/recursive dropdowns with depth-based positioning logic
+window.positionNestedDropdown = (dropdown, dropdownId) => {
+    console.log('Positioning nested dropdown:', dropdownId);
+
+    // Clear any previous hiding state and reset all properties
+    dropdown.classList.remove('hide');
+    dropdown.classList.add('show');
+    dropdown.style.visibility = '';
+    dropdown.style.opacity = '';
+
+    // Find the parent tile for nested dropdowns
+    let parentTile = dropdown.parentNode.querySelector('.child-tag-tile, .recursive-tag-tile');
+    if (!parentTile) {
+        // Try looking in the previous sibling or parent container
+        const parentContainer = dropdown.closest('.child-tag-container, .recursive-tag-container');
+        if (parentContainer) {
+            parentTile = parentContainer.querySelector('.child-tag-tile, .recursive-tag-tile');
+        }
+    }
+
+    if (!parentTile) {
+        console.log('Parent tile not found for nested dropdown:', dropdownId);
+        return;
+    }
+
+    // Extract depth from dropdown class
+    let depth = 1;
+    const depthMatch = dropdown.className.match(/depth-(\d+)/);
+    if (depthMatch) {
+        depth = parseInt(depthMatch[1]);
+    }
+
+    console.log('Nested dropdown depth:', depth);
+
+    // Get parent tile position
+    const parentRect = parentTile.getBoundingClientRect();
+    const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+
+    // Position off-screen first to measure dimensions
+    dropdown.style.visibility = 'hidden';
+    dropdown.style.opacity = '1';
+    dropdown.style.position = 'absolute';
+    dropdown.style.top = '0px';
+    dropdown.style.left = '0px';
+
+    const dropdownRect = dropdown.getBoundingClientRect();
+
+    console.log('Parent tile rect:', parentRect);
+    console.log('Nested dropdown rect:', dropdownRect);
+
+    // Calculate position based on depth and viewport constraints
+    const margin = 15;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    let left, top;
+
+    // Horizontal positioning: alternate between right and left expansion based on depth and space
+    const rightSpaceAvailable = viewportWidth - (parentRect.right + scrollLeft) - margin;
+    const leftSpaceAvailable = (parentRect.left + scrollLeft) - margin;
+
+    // For even depths (2, 4, 6...) or when right space is sufficient, expand right
+    // For odd depths (3, 5, 7...) or when left space is more available, expand left
+    if ((depth % 2 === 0 && rightSpaceAvailable >= dropdownRect.width) ||
+        (rightSpaceAvailable >= leftSpaceAvailable && rightSpaceAvailable >= dropdownRect.width)) {
+        // Expand to the right
+        left = parentRect.right + scrollLeft + 5; // 5px gap from parent
+    } else if (leftSpaceAvailable >= dropdownRect.width) {
+        // Expand to the left
+        left = parentRect.left + scrollLeft - dropdownRect.width - 5;
+    } else {
+        // Not enough space on either side, choose the side with more space
+        if (rightSpaceAvailable >= leftSpaceAvailable) {
+            left = parentRect.right + scrollLeft + 5;
+        } else {
+            left = parentRect.left + scrollLeft - dropdownRect.width - 5;
+        }
+    }
+
+    // Vertical positioning: align with parent top, but adjust if goes off screen
+    top = parentRect.top + scrollTop;
+
+    // Adjust if dropdown goes off bottom of viewport
+    const topRelativeToViewport = top - scrollTop;
+    if (topRelativeToViewport + dropdownRect.height > viewportHeight - margin) {
+        // Move up so bottom aligns with viewport bottom
+        top = scrollTop + viewportHeight - dropdownRect.height - margin;
+
+        // Ensure it doesn't go above viewport
+        if (top < scrollTop + margin) {
+            top = scrollTop + margin;
+        }
+    }
+
+    // Final bounds checking for horizontal position
+    const leftRelativeToViewport = left - scrollLeft;
+    if (leftRelativeToViewport < margin) {
+        left = scrollLeft + margin;
+    } else if (leftRelativeToViewport + dropdownRect.width > viewportWidth - margin) {
+        left = scrollLeft + viewportWidth - dropdownRect.width - margin;
+    }
+
+    // Apply position and make visible
+    dropdown.style.left = left + 'px';
+    dropdown.style.top = top + 'px';
+    dropdown.style.visibility = 'visible';
+    dropdown.style.opacity = '1';
+    dropdown.style.pointerEvents = 'auto';
+    dropdown.style.zIndex = (999999 + depth).toString(); // Higher z-index for deeper levels
+
+    console.log('Positioned nested dropdown at depth', depth, 'at', left, top);
+
+    // Set up click outside to close nested dropdowns
+    if (!dropdown.hasAttribute('data-click-outside-setup')) {
+        dropdown.setAttribute('data-click-outside-setup', 'true');
+        const handleNestedClickOutside = (event) => {
+            // Check if click is outside all related dropdowns and tiles in the chain
+            let clickedInsideChain = false;
+
+            // Walk up the parent chain to see if click is in any related element
+            let current = dropdown;
+            while (current) {
+                if (current.contains(event.target)) {
+                    clickedInsideChain = true;
+                    break;
+                }
+
+                // Check parent tile
+                const currentParentContainer = current.closest('.child-tag-container, .recursive-tag-container');
+                if (currentParentContainer && currentParentContainer.contains(event.target)) {
+                    clickedInsideChain = true;
+                    break;
+                }
+
+                // Move to next level up
+                current = currentParentContainer ? currentParentContainer.closest('.nested-children-dropdown, .recursive-children-dropdown') : null;
+            }
+
+            if (!clickedInsideChain) {
+                // Close this dropdown and all nested children
+                closeNestedDropdownChain(dropdown);
+
+                // Notify Blazor
+                const dropdownIdParts = dropdownId.split('dropdown-')[1];
+                if (dropdownIdParts && window.blazorDropdownClosed) {
+                    window.blazorDropdownClosed(dropdownIdParts);
+                }
+
+                document.removeEventListener('click', handleNestedClickOutside);
+                dropdown.removeAttribute('data-click-outside-setup');
+            }
+        };
+
+        setTimeout(() => {
+            document.addEventListener('click', handleNestedClickOutside);
+        }, 100);
+    }
+};
+
+// Helper function to close a nested dropdown and all its children
+window.closeNestedDropdownChain = (dropdown) => {
+    if (!dropdown) return;
+
+    // Close all nested children first
+    const childDropdowns = dropdown.querySelectorAll('.nested-children-dropdown, .recursive-children-dropdown');
+    childDropdowns.forEach(child => {
+        child.classList.remove('show');
+        child.classList.add('hide');
+        child.style.top = '-9999px';
+        child.style.left = '-9999px';
+        child.style.pointerEvents = 'none';
+        child.style.visibility = 'hidden';
+        child.style.opacity = '0';
+    });
+
+    // Close the dropdown itself
+    dropdown.classList.remove('show');
+    dropdown.classList.add('hide');
+    dropdown.style.top = '-9999px';
+    dropdown.style.left = '-9999px';
+    dropdown.style.pointerEvents = 'none';
+    dropdown.style.visibility = 'hidden';
+    dropdown.style.opacity = '0';
+};
+
 window.hideDropdown = (dropdownId) => {
     const dropdown = document.getElementById(dropdownId);
     if (dropdown) {
@@ -226,7 +432,7 @@ window.setupDropdownCallbacks = (dotNetRef) => {
 
 // Global function to ensure all hidden dropdowns are properly disabled
 window.cleanupHiddenDropdowns = () => {
-    const allDropdowns = document.querySelectorAll('.children-dropdown');
+    const allDropdowns = document.querySelectorAll('.children-dropdown, .nested-children-dropdown, .recursive-children-dropdown');
     allDropdowns.forEach(dropdown => {
         // Only cleanup dropdowns that are stuck visible but should be hidden
         // Check if dropdown is visible but not intentionally shown
