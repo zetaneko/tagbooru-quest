@@ -93,13 +93,15 @@ public class CharacterBuildState : ICharacterBuildState
         return _selections.Values
             .OrderBy(s => s.PromptOrderWeight)
             .SelectMany(s => s.Options)
+            .GroupBy(o => o.CanonicalTag)
+            .Select(g => g.First())
             .ToList();
     }
 
     public string BuildPrompt()
     {
         var allSelections = GetAllSelections();
-        var displays = allSelections.Select(o => o.Display).Distinct();
+        var displays = allSelections.Select(o => o.Display);
         return string.Join(" ", displays);
     }
 

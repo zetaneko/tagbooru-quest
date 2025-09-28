@@ -50,8 +50,8 @@
             {
                 <div class="trait-panel">
                     <h3 class="panel-title">@panel.Title</h3>
-
-                    @foreach (var source in panel.Sources)
+                    <div class="panel-content">
+                        @foreach (var source in panel.Sources)
                     {
                         var sourceKey = GetSourceKey(panel.Key, source);
                         var isExpanded = IsSourceExpanded(panel.Key, source);
@@ -159,6 +159,7 @@
                             }
                         </div>
                     }
+                    </div>
                 </div>
             }
         }
@@ -653,7 +654,14 @@
             }
         }
 
-        return result.OrderBy(x => GetPanelPromptOrderWeight(x.Item2)).ToList();
+        // Remove duplicates based on CanonicalTag, keeping the first occurrence based on panel order
+        var deduplicatedResult = result
+            .OrderBy(x => GetPanelPromptOrderWeight(x.Item2))
+            .GroupBy(x => x.Item1.CanonicalTag)
+            .Select(g => g.First())
+            .ToList();
+
+        return deduplicatedResult;
     }
 
     private int GetPanelPromptOrderWeight(string panelKey)
